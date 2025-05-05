@@ -13,9 +13,9 @@ import * as z from "zod";
 import { useAuth } from "@/hooks/use-auth";
 
 const profileSchema = z.object({
-  age: z.string().min(1, "Age is required").transform(Number),
-  weight: z.string().min(1, "Weight is required").transform(Number),
-  height: z.string().min(1, "Height is required").transform(Number),
+  age: z.coerce.number().min(1, "Age is required"),
+  weight: z.coerce.number().min(1, "Weight is required"),
+  height: z.coerce.number().min(1, "Height is required"),
   gender: z.enum(["male", "female", "other"], {
     required_error: "Please select a gender",
   }),
@@ -26,15 +26,15 @@ type ProfileFormValues = z.infer<typeof profileSchema>;
 const ProfileSetup = () => {
   const { toast } = useToast();
   const navigate = useNavigate();
-  const { user, session } = useAuth();
+  const { user, refreshProfile } = useAuth();
   const [loading, setLoading] = useState(false);
 
   const form = useForm<ProfileFormValues>({
     resolver: zodResolver(profileSchema),
     defaultValues: {
-      age: "",
-      weight: "",
-      height: "",
+      age: undefined,
+      weight: undefined,
+      height: undefined,
       gender: undefined,
     },
   });
@@ -56,6 +56,9 @@ const ProfileSetup = () => {
         .eq('id', user.id);
 
       if (error) throw error;
+      
+      // Refresh the profile data in the auth context
+      await refreshProfile();
       
       toast({
         title: "Profile updated!",

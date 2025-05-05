@@ -1,5 +1,6 @@
 
 import { useState, useEffect } from "react";
+import { useAuth } from "@/hooks/use-auth";
 
 interface DashboardHeaderProps {
   userName?: string;
@@ -18,8 +19,13 @@ const quotes = [
   "The pain you feel today will be the strength you feel tomorrow."
 ];
 
-const DashboardHeader = ({ userName = "Fitness Enthusiast" }: DashboardHeaderProps) => {
+const DashboardHeader = ({ userName }: DashboardHeaderProps) => {
   const [quote, setQuote] = useState("");
+  const { profile } = useAuth();
+  
+  // Generate display name from profile if available
+  const displayName = userName || 
+    (profile?.first_name ? `${profile.first_name} ${profile.last_name || ''}`.trim() : "Fitness Enthusiast");
   
   useEffect(() => {
     // Simulate a daily quote by choosing one based on the day of the month
@@ -31,7 +37,7 @@ const DashboardHeader = ({ userName = "Fitness Enthusiast" }: DashboardHeaderPro
   return (
     <div className="mb-10">
       <h1 className="text-3xl md:text-4xl font-bold mb-3">
-        Welcome, <span className="text-fitmentor-cream">{userName}</span>
+        Welcome, <span className="text-fitmentor-cream">{displayName}</span>
       </h1>
       <p className="text-fitmentor-medium-gray text-lg italic">
         "{quote}"
