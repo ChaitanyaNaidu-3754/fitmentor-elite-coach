@@ -48,12 +48,24 @@ const RegisterForm = () => {
 
       if (error) throw error;
       
+      // Update the profile with name information immediately
+      if (data.user) {
+        await supabase
+          .from('profiles')
+          .update({
+            first_name: firstName,
+            last_name: lastName,
+          })
+          .eq('id', data.user.id);
+      }
+      
       toast({
         title: "Account created!",
-        description: "Please check your email for a confirmation link.",
+        description: "Please complete your profile setup.",
       });
       
-      navigate("/dashboard");
+      // Redirect to profile setup page instead of dashboard
+      navigate("/profile-setup");
     } catch (error: any) {
       toast({
         title: "Registration failed",

@@ -10,6 +10,7 @@ import Workouts from "./pages/Workouts";
 import LiveWorkout from "./pages/LiveWorkout";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
+import ProfileSetup from "./pages/ProfileSetup";
 import NotFound from "./pages/NotFound";
 import { AuthProvider } from "@/hooks/use-auth";
 
@@ -29,6 +30,7 @@ const App = () => (
             <Route path="/live-workout" element={<LiveWorkout />} />
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
+            <Route path="/profile-setup" element={<ProfileSetup />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>

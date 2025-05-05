@@ -7,13 +7,30 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { CalendarDays, ChevronRight, Target, Play } from "lucide-react";
 import { Link } from "react-router-dom";
+import { useAuth } from "@/hooks/use-auth";
+import { useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 
 const Dashboard = () => {
+  const { user, profile, loading, profileLoading } = useAuth();
+  const navigate = useNavigate();
+  
+  // If user is logged in but doesn't have profile info, redirect to profile setup
+  useEffect(() => {
+    if (!loading && !profileLoading && user && profile && 
+        (profile.age === null || profile.weight === null || profile.height === null || profile.gender === null)) {
+      navigate("/profile-setup");
+    }
+  }, [user, profile, loading, profileLoading, navigate]);
+  
+  // Get user's display name from profile
+  const userName = profile?.first_name || "Fitness Enthusiast";
+
   return (
     <>
       <Navbar />
       <div className="container mx-auto px-6 pt-28 pb-12">
-        <DashboardHeader userName="Alex" />
+        <DashboardHeader userName={userName} />
         
         <StatsOverview streak={5} totalWorkoutTime={325} caloriesBurned={1250} />
         
