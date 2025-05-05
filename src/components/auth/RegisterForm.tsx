@@ -2,8 +2,9 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
 
 const RegisterForm = () => {
   const [name, setName] = useState("");
@@ -11,19 +12,57 @@ const RegisterForm = () => {
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
+  const navigate = useNavigate();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     
-    // This would be replaced with Supabase auth once integrated
-    setTimeout(() => {
-      setLoading(false);
+    if (password.length < 8) {
       toast({
-        title: "Coming soon",
-        description: "Please connect Supabase to enable authentication",
+        title: "Password too short",
+        description: "Password must be at least 8 characters",
+        variant: "destructive",
       });
-    }, 1000);
+      setLoading(false);
+      return;
+    }
+    
+    try {
+      // Split the name into first and last name
+      const nameParts = name.trim().split(' ');
+      const firstName = nameParts[0] || '';
+      const lastName = nameParts.slice(1).join(' ') || '';
+      
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: {
+            first_name: firstName,
+            last_name: lastName,
+            full_name: name,
+          }
+        },
+      });
+
+      if (error) throw error;
+      
+      toast({
+        title: "Account created!",
+        description: "Please check your email for a confirmation link.",
+      });
+      
+      navigate("/dashboard");
+    } catch (error: any) {
+      toast({
+        title: "Registration failed",
+        description: error.message || "Please check your information and try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
