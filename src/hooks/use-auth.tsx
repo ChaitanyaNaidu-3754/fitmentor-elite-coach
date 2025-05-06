@@ -16,6 +16,15 @@ interface UserProfile {
   gender: string | null;
 }
 
+interface UserGoals {
+  experience_level: string | null;
+  workout_days_per_week: number | null;
+  workout_minutes_per_session: number | null;
+  goal_type: string | null;
+  target_weight: number | null;
+  target_body_fat: number | null;
+}
+
 interface AuthContextType {
   user: User | null;
   session: Session | null;

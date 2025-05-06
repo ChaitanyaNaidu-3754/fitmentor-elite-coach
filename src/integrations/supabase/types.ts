@@ -54,6 +54,7 @@ export type Database = {
           current_body_fat: number | null
           current_muscle_mass: number | null
           current_weight: number | null
+          experience_level: string | null
           goal_type: string
           id: string
           start_date: string | null
@@ -63,12 +64,15 @@ export type Database = {
           target_weight: number | null
           updated_at: string | null
           user_id: string
+          workout_days_per_week: number | null
+          workout_minutes_per_session: number | null
         }
         Insert: {
           created_at?: string | null
           current_body_fat?: number | null
           current_muscle_mass?: number | null
           current_weight?: number | null
+          experience_level?: string | null
           goal_type: string
           id?: string
           start_date?: string | null
@@ -78,12 +82,15 @@ export type Database = {
           target_weight?: number | null
           updated_at?: string | null
           user_id: string
+          workout_days_per_week?: number | null
+          workout_minutes_per_session?: number | null
         }
         Update: {
           created_at?: string | null
           current_body_fat?: number | null
           current_muscle_mass?: number | null
           current_weight?: number | null
+          experience_level?: string | null
           goal_type?: string
           id?: string
           start_date?: string | null
@@ -93,6 +100,8 @@ export type Database = {
           target_weight?: number | null
           updated_at?: string | null
           user_id?: string
+          workout_days_per_week?: number | null
+          workout_minutes_per_session?: number | null
         }
         Relationships: [
           {
