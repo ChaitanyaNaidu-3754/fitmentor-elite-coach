@@ -120,7 +120,7 @@ const LiveWorkout = () => {
     fetchWorkoutData();
   }, [id, toast]);
 
-  // Fixed camera initialization function
+  // Improved camera initialization function
   const startStopCamera = async () => {
     if (!cameraActive) {
       try {
@@ -138,39 +138,49 @@ const LiveWorkout = () => {
         
         console.log("Camera access granted:", stream);
         
-        if (videoRef.current) {
-          console.log("Setting video source...");
-          videoRef.current.srcObject = stream;
-          
-          // Make sure the video element is visible
-          if (videoRef.current.style.display === 'none') {
-            videoRef.current.style.display = 'block';
-          }
-          
-          // Use the onloadedmetadata event to ensure video starts playing
-          videoRef.current.onloadedmetadata = () => {
-            console.log("Video metadata loaded, playing video");
-            if (videoRef.current) {
-              videoRef.current.play().catch(e => console.error("Error playing video:", e));
-            }
-          };
-          
-          streamRef.current = stream;
-          setCameraActive(true);
-          setCameraPermission(true);
-          
-          toast({
-            title: "Camera activated",
-            description: "Your form will be analyzed in real-time",
-          });
-          
-          // Start motion detection once camera is active
-          if (canvasRef.current) {
-            console.log("Starting motion detection...");
-            startMotionDetection();
-          }
-        } else {
+        // Make sure video ref exists before proceeding
+        if (!videoRef.current) {
           console.error("Video reference not available");
+          toast({
+            variant: "destructive",
+            title: "Error",
+            description: "Unable to access video element. Please refresh the page and try again.",
+          });
+          return;
+        }
+        
+        // Set video stream and display
+        videoRef.current.srcObject = stream;
+        videoRef.current.style.display = 'block';
+        
+        // Ensure video plays after metadata is loaded
+        videoRef.current.onloadedmetadata = () => {
+          console.log("Video metadata loaded, playing video");
+          if (videoRef.current) {
+            videoRef.current.play().catch(e => {
+              console.error("Error playing video:", e);
+              toast({
+                variant: "destructive",
+                title: "Error",
+                description: "Unable to start video playback. Please check browser settings.",
+              });
+            });
+          }
+        };
+        
+        streamRef.current = stream;
+        setCameraActive(true);
+        setCameraPermission(true);
+        
+        toast({
+          title: "Camera activated",
+          description: "Your form will be analyzed in real-time",
+        });
+        
+        // Start motion detection once camera is active
+        if (canvasRef.current) {
+          console.log("Starting motion detection...");
+          startMotionDetection();
         }
       } catch (err) {
         console.error("Error accessing camera:", err);
@@ -220,7 +230,7 @@ const LiveWorkout = () => {
     let previousImageData: ImageData | null = null;
     
     const detect = () => {
-      if (!ctx || !video.videoWidth) {
+      if (!video.videoWidth) {
         console.log("Waiting for video dimensions...");
         requestAnimationFrameRef.current = requestAnimationFrame(detect);
         return;
@@ -585,7 +595,7 @@ const LiveWorkout = () => {
             </div>
             
             <div className="flex-grow grid grid-cols-1 lg:grid-cols-3 gap-8">
-              {/* Camera view area - Fixed to improve video rendering */}
+              {/* Camera view area - Improved video rendering */}
               <div className="lg:col-span-2 glass-card overflow-hidden flex flex-col">
                 <div className="relative flex-grow bg-fitmentor-black flex items-center justify-center">
                   {/* Hidden canvas for motion detection */}
@@ -645,66 +655,67 @@ const LiveWorkout = () => {
                 </div>
                 
                 <div className="p-6 border-t border-fitmentor-cream/10 flex justify-between items-center">
-                  <Button 
-                    onClick={startStopCamera}
-                    variant="outline"
-                    className="border-fitmentor-cream/30 text-fitmentor-cream hover:bg-fitmentor-cream hover:text-fitmentor-black"
-                  >
-                    {cameraActive ? (
-                      <>
-                        <CameraOff size={16} className="mr-2" />
-                        Disable Camera
-                      </>
-                    ) : (
-                      <>
-                        <Camera size={16} className="mr-2" />
-                        Enable Camera
-                      </>
-                    )}
-                  </Button>
-                  
-                  {!isWorkoutActive ? (
+                  {!cameraActive ? (
                     <Button 
-                      onClick={startWorkout}
+                      onClick={startStopCamera}
                       className="premium-button"
-                      disabled={!cameraActive}
                     >
-                      <Play size={16} className="mr-2" />
-                      Start Workout
+                      <Camera size={16} className="mr-2" />
+                      Enable Camera
                     </Button>
                   ) : (
-                    <div className="flex gap-3">
+                    <>
+                      {!isWorkoutActive ? (
+                        <Button 
+                          onClick={startWorkout}
+                          className="premium-button"
+                        >
+                          <Play size={16} className="mr-2" />
+                          Start Workout
+                        </Button>
+                      ) : (
+                        <div className="flex gap-3">
+                          <Button 
+                            onClick={pauseWorkout}
+                            variant="outline"
+                            className="border-fitmentor-cream/30 text-fitmentor-cream hover:bg-fitmentor-cream hover:text-fitmentor-black"
+                          >
+                            {isPaused ? (
+                              <>
+                                <Play size={16} className="mr-2" />
+                                Resume
+                              </>
+                            ) : (
+                              <>
+                                <Pause size={16} className="mr-2" />
+                                Pause
+                              </>
+                            )}
+                          </Button>
+                          <Button 
+                            onClick={resetWorkout}
+                            variant="outline"
+                            className="border-fitmentor-cream/30 text-fitmentor-cream hover:bg-fitmentor-cream hover:text-fitmentor-black"
+                          >
+                            <RotateCcw size={16} className="mr-2" />
+                            Reset
+                          </Button>
+                        </div>
+                      )}
                       <Button 
-                        onClick={pauseWorkout}
+                        onClick={startStopCamera}
                         variant="outline"
                         className="border-fitmentor-cream/30 text-fitmentor-cream hover:bg-fitmentor-cream hover:text-fitmentor-black"
                       >
-                        {isPaused ? (
-                          <>
-                            <Play size={16} className="mr-2" />
-                            Resume
-                          </>
-                        ) : (
-                          <>
-                            <Pause size={16} className="mr-2" />
-                            Pause
-                          </>
-                        )}
+                        <CameraOff size={16} className="mr-2" />
+                        Disable Camera
                       </Button>
-                      <Button 
-                        onClick={resetWorkout}
-                        variant="outline"
-                        className="border-fitmentor-cream/30 text-fitmentor-cream hover:bg-fitmentor-cream hover:text-fitmentor-black"
-                      >
-                        <RotateCcw size={16} className="mr-2" />
-                        Reset
-                      </Button>
-                    </div>
+                    </>
                   )}
                 </div>
               </div>
               
-              {/* Workout details */}
+              {/* Workout stats */}
               <div className="glass-card p-6">
                 <h2 className="text-xl font-bold mb-4">Workout Stats</h2>
                 
