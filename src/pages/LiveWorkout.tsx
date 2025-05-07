@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useRef } from "react";
 import Navbar from "@/components/layout/Navbar";
 import { Button } from "@/components/ui/button";
@@ -10,7 +9,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 
 const LiveWorkout = () => {
-  const { id } = useParams(); // Get workout ID from URL if available
+  const { id } = useParams();
   const { user } = useAuth();
   const [isWorkoutActive, setIsWorkoutActive] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
@@ -36,11 +35,11 @@ const LiveWorkout = () => {
     name: "Full Body Power",
     duration_minutes: 45,
     exercises: [
-      { id: "1", name: "Jumping Jacks", reps: 20, duration: 60, image_url: null },
-      { id: "2", name: "Push-ups", reps: 15, duration: 60, image_url: null },
-      { id: "3", name: "Squats", reps: 20, duration: 60, image_url: null },
-      { id: "4", name: "Plank", reps: 1, duration: 60, image_url: null }, // Hold for 60 seconds
-      { id: "5", name: "Mountain Climbers", reps: 30, duration: 60, image_url: null },
+      { id: "1", name: "Jumping Jacks", reps: 20, duration: 60, image_url: null, rest_seconds: 30 },
+      { id: "2", name: "Push-ups", reps: 15, duration: 60, image_url: null, rest_seconds: 30 },
+      { id: "3", name: "Squats", reps: 20, duration: 60, image_url: null, rest_seconds: 30 },
+      { id: "4", name: "Plank", reps: 1, duration: 60, image_url: null, rest_seconds: 30 },
+      { id: "5", name: "Mountain Climbers", reps: 30, duration: 60, image_url: null, rest_seconds: 30 },
     ],
   };
 
@@ -95,7 +94,7 @@ const LiveWorkout = () => {
           reps: item.reps_per_set || 10,
           sets: item.sets || 3,
           duration: item.duration_seconds || 60,
-          rest: item.rest_seconds || 30,
+          rest_seconds: item.rest_seconds || 30,
           image_url: item.exercise.image_url
         }));
         
@@ -119,16 +118,33 @@ const LiveWorkout = () => {
     fetchWorkoutData();
   }, [id, toast]);
 
+  // Fixed camera initialization function
   const startStopCamera = async () => {
     if (!cameraActive) {
       try {
+        // Explicitly log the camera request
+        console.log("Requesting camera access...");
+        
         const stream = await navigator.mediaDevices.getUserMedia({ 
-          video: true,
+          video: {
+            width: { ideal: 640 },
+            height: { ideal: 480 },
+            facingMode: "user"
+          },
           audio: false 
         });
         
+        console.log("Camera access granted:", stream);
+        
         if (videoRef.current) {
+          console.log("Setting video source...");
           videoRef.current.srcObject = stream;
+          // Ensure the video loads before playing
+          videoRef.current.onloadedmetadata = () => {
+            console.log("Video metadata loaded, playing video");
+            videoRef.current?.play().catch(e => console.error("Error playing video:", e));
+          };
+          
           streamRef.current = stream;
           setCameraActive(true);
           setCameraPermission(true);
@@ -140,8 +156,11 @@ const LiveWorkout = () => {
           
           // Start motion detection once camera is active
           if (canvasRef.current) {
+            console.log("Starting motion detection...");
             startMotionDetection();
           }
+        } else {
+          console.error("Video reference not available");
         }
       } catch (err) {
         console.error("Error accessing camera:", err);
@@ -168,12 +187,21 @@ const LiveWorkout = () => {
 
   // Motion detection logic
   const startMotionDetection = () => {
-    if (!videoRef.current || !canvasRef.current) return;
+    if (!videoRef.current || !canvasRef.current) {
+      console.error("Video or canvas reference not available");
+      return;
+    }
     
     const video = videoRef.current;
     const canvas = canvasRef.current;
     const ctx = canvas.getContext('2d');
-    if (!ctx) return;
+    if (!ctx) {
+      console.error("Could not get canvas context");
+      return;
+    }
+    
+    console.log("Motion detection initialized with video dimensions:", 
+      video.videoWidth || 640, "x", video.videoHeight || 480);
     
     // Set canvas dimensions
     canvas.width = video.videoWidth || 640;
@@ -183,6 +211,7 @@ const LiveWorkout = () => {
     
     const detect = () => {
       if (!ctx || !video.videoWidth) {
+        console.log("Waiting for video dimensions...");
         requestAnimationFrameRef.current = requestAnimationFrame(detect);
         return;
       }
@@ -198,6 +227,7 @@ const LiveWorkout = () => {
         const movement = detectMovement(previousImageData, currentImageData);
         
         if (movement > 20) { // Threshold for significant movement
+          console.log(`Movement detected: ${movement} - incrementing rep count`);
           // When significant movement is detected, increment rep count
           if (timeElapsed % 2 === 0) { // Limit the rep counting rate
             if (currentRep < (workoutData?.exercises[currentExercise]?.reps || 10)) {
@@ -242,6 +272,7 @@ const LiveWorkout = () => {
   };
 
   const startWorkout = async () => {
+    // Fixed to allow starting workout once camera is active
     if (!cameraActive) {
       toast({
         variant: "destructive",
@@ -443,18 +474,18 @@ const LiveWorkout = () => {
   }, []);
 
   // Format time from seconds to MM:SS
-  const formatTime = (seconds: number) => {
+  function formatTime(seconds: number) {
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
     return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
-  };
+  }
 
   // Calculate progress percentage for current exercise
-  const calculateProgress = () => {
+  function calculateProgress() {
     if (!isWorkoutActive) return 0;
     const currentExerciseReps = workoutData?.exercises[currentExercise]?.reps || 10;
     return Math.floor((currentRep / currentExerciseReps) * 100);
-  };
+  }
 
   // Current exercise data
   const currentExerciseData = workoutData?.exercises[currentExercise];
@@ -527,7 +558,7 @@ const LiveWorkout = () => {
             </div>
             
             <div className="flex-grow grid grid-cols-1 lg:grid-cols-3 gap-8">
-              {/* Camera view area */}
+              {/* Camera view area - Fixed to improve video rendering */}
               <div className="lg:col-span-2 glass-card overflow-hidden flex flex-col">
                 <div className="relative flex-grow bg-fitmentor-black flex items-center justify-center">
                   {/* Hidden canvas for motion detection */}
@@ -541,7 +572,9 @@ const LiveWorkout = () => {
                       ref={videoRef}
                       autoPlay
                       playsInline
+                      muted
                       className="h-full w-full object-cover"
+                      style={{ transform: 'scaleX(-1)' }} // Mirror effect for better UX
                     />
                   ) : (
                     <div className="text-center p-10">
@@ -570,12 +603,12 @@ const LiveWorkout = () => {
                   {isWorkoutActive && (
                     <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-fitmentor-black to-transparent p-6">
                       <h3 className="text-xl font-bold text-fitmentor-cream">
-                        {currentExerciseData?.name || "Exercise"}
+                        {workoutData?.exercises[currentExercise]?.name || "Exercise"}
                       </h3>
                       <div className="flex items-center justify-between mt-2">
                         <div>
                           <p className="text-fitmentor-medium-gray text-sm">
-                            Rep {currentRep} of {currentExerciseData?.reps || 10}
+                            Rep {currentRep} of {workoutData?.exercises[currentExercise]?.reps || 10}
                           </p>
                         </div>
                         <Progress value={calculateProgress()} className="w-1/2 h-2" />
@@ -663,7 +696,7 @@ const LiveWorkout = () => {
                     <p className="text-sm text-fitmentor-medium-gray mb-1">Current Exercise</p>
                     <p className="text-xl font-bold text-fitmentor-cream">
                       {isWorkoutActive 
-                        ? currentExerciseData?.name || "Exercise"
+                        ? workoutData?.exercises[currentExercise]?.name || "Exercise"
                         : "Not started"
                       }
                     </p>
@@ -674,7 +707,7 @@ const LiveWorkout = () => {
                     <Progress value={calculateProgress()} className="h-2 mb-1" />
                     <div className="flex justify-between text-xs text-fitmentor-medium-gray">
                       <span>{currentRep} reps</span>
-                      <span>{currentExerciseData?.reps || 10} reps</span>
+                      <span>{workoutData?.exercises[currentExercise]?.reps || 10} reps</span>
                     </div>
                   </div>
                   

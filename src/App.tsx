@@ -14,6 +14,7 @@ import Register from "./pages/Register";
 import ProfileSetup from "./pages/ProfileSetup";
 import Profile from "./pages/Profile";
 import Goals from "./pages/Goals";
+import Nutrition from "./pages/Nutrition";
 import NotFound from "./pages/NotFound";
 import { AuthProvider } from "@/hooks/use-auth";
 
@@ -38,6 +39,7 @@ const App = () => (
             <Route path="/profile-setup" element={<ProfileSetup />} />
             <Route path="/profile" element={<Profile />} />
             <Route path="/goals" element={<Goals />} />
+            <Route path="/nutrition" element={<Nutrition />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>
