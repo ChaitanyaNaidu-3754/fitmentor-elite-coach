@@ -6,12 +6,14 @@ interface StatsOverviewProps {
   streak: number;
   totalWorkoutTime: number;
   caloriesBurned: number;
+  loading?: boolean;
 }
 
 const StatsOverview = ({ 
   streak = 0, 
   totalWorkoutTime = 0, 
-  caloriesBurned = 0 
+  caloriesBurned = 0,
+  loading = false
 }: StatsOverviewProps) => {
   // Format workout time (minutes) to hours and minutes
   const formatWorkoutTime = (minutes: number) => {
@@ -23,6 +25,21 @@ const StatsOverview = ({
     }
     return `${mins}m`;
   };
+
+  // Display loading state if data is still loading
+  if (loading) {
+    return (
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
+        {[...Array(4)].map((_, i) => (
+          <Card key={i} className="glass-card border-none">
+            <CardContent className="p-6 min-h-[120px] flex items-center justify-center">
+              <p className="text-fitmentor-medium-gray">Loading stats...</p>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+    );
+  }
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
