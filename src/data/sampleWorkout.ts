@@ -1,39 +1,55 @@
 
+// Helper function to generate unique IDs 
+const generateId = (prefix: string): string => {
+  return `${prefix}-${Math.random().toString(36).substring(2, 10)}`;
+};
+
 export const sampleExercises = {
   fullBody: [
     { 
+      id: generateId("ex"),
       name: "Push-ups", 
       description: "A bodyweight exercise that targets your chest, shoulders, and triceps. Start in a plank position with hands slightly wider than shoulder-width, lower your body until your chest nearly touches the floor, then push back up.",
       sets: 3,
       repsPerSet: 15,
+      durationSeconds: null,
+      sequenceOrder: 1,
       muscleGroups: ["Chest", "Shoulders", "Triceps"],
       imageUrl: "https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1740&q=80",
       restSeconds: 60
     },
     { 
+      id: generateId("ex"),
       name: "Squats", 
       description: "A compound exercise that primarily targets your quadriceps, hamstrings, and glutes. Stand with feet shoulder-width apart, lower your body by bending your knees as if sitting in a chair, then return to standing.",
       sets: 3,
       repsPerSet: 20,
+      durationSeconds: null,
+      sequenceOrder: 2,
       muscleGroups: ["Quadriceps", "Hamstrings", "Glutes"],
       imageUrl: "https://images.unsplash.com/photo-1574680096145-d05b474e2155?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1740&q=80",
       restSeconds: 60
     },
     { 
+      id: generateId("ex"),
       name: "Plank", 
       description: "A core exercise that engages multiple muscles simultaneously to improve stability. Hold a position similar to a push-up but with your weight on your forearms, keeping your body in a straight line.",
       sets: 3,
       repsPerSet: 1,
       durationSeconds: 45,
+      sequenceOrder: 3,
       muscleGroups: ["Core", "Shoulders", "Back"],
       imageUrl: "https://images.unsplash.com/photo-1566241142559-40e1562c813c?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1740&q=80",
       restSeconds: 45
     },
     { 
+      id: generateId("ex"),
       name: "Jumping Jacks", 
       description: "A full-body cardio exercise that increases heart rate and improves coordination. Jump while spreading your legs and bringing your arms over your head, then return to starting position.",
       sets: 3,
       repsPerSet: 25,
+      durationSeconds: null,
+      sequenceOrder: 4,
       muscleGroups: ["Full Body", "Cardio"],
       imageUrl: "https://images.unsplash.com/photo-1601422407692-ec4eeec1d9b3?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1740&q=80",
       restSeconds: 30
@@ -41,37 +57,49 @@ export const sampleExercises = {
   ],
   upperBody: [
     { 
+      id: generateId("ex"),
       name: "Dumbbell Shoulder Press", 
       description: "An upper body exercise targeting the deltoids and triceps. Hold dumbbells at shoulder level, press them overhead until your arms are straight, then lower back down.",
       sets: 4,
       repsPerSet: 12,
+      durationSeconds: null,
+      sequenceOrder: 1,
       muscleGroups: ["Shoulders", "Triceps"],
       imageUrl: "https://images.unsplash.com/photo-1581009146145-b5ef050c2e1e?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1740&q=80",
       restSeconds: 60
     },
     { 
+      id: generateId("ex"),
       name: "Bent Over Rows", 
       description: "A compound exercise that works your back muscles. Bend forward with knees slightly bent, holding weights, and pull them toward your lower ribs while keeping your back straight.",
       sets: 3,
       repsPerSet: 12,
+      durationSeconds: null,
+      sequenceOrder: 2,
       muscleGroups: ["Back", "Biceps"],
       imageUrl: "https://images.unsplash.com/photo-1532029837206-abbe2b7620e3?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1740&q=80",
       restSeconds: 60
     },
     { 
+      id: generateId("ex"),
       name: "Chest Press", 
       description: "A strength exercise targeting the pectoral muscles. Lie on your back, holding dumbbells at chest level, then push them up until your arms are extended.",
       sets: 3,
       repsPerSet: 10,
+      durationSeconds: null,
+      sequenceOrder: 3,
       muscleGroups: ["Chest", "Shoulders", "Triceps"],
       imageUrl: "https://images.unsplash.com/photo-1534438327276-14e5300c3a48?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1740&q=80",
       restSeconds: 60
     },
     { 
+      id: generateId("ex"),
       name: "Tricep Dips", 
       description: "An exercise that targets the triceps. Position yourself on a bench or chair with hands shoulder-width apart, lower your body by bending your elbows, then push back up.",
       sets: 3,
       repsPerSet: 15,
+      durationSeconds: null,
+      sequenceOrder: 4,
       muscleGroups: ["Triceps", "Chest", "Shoulders"],
       imageUrl: "https://images.unsplash.com/photo-1566351557863-4cfa6b47ea9d?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1744&q=80",
       restSeconds: 45
@@ -79,37 +107,49 @@ export const sampleExercises = {
   ],
   core: [
     { 
+      id: generateId("ex"),
       name: "Crunches", 
       description: "A core exercise targeting the abdominal muscles. Lie on your back with knees bent, place hands behind your head, and lift your upper body toward your knees.",
       sets: 3,
       repsPerSet: 20,
+      durationSeconds: null,
+      sequenceOrder: 1,
       muscleGroups: ["Abs"],
       imageUrl: "https://images.unsplash.com/photo-1571019613242-c5c5dee9f50b?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1740&q=80",
       restSeconds: 30
     },
     { 
+      id: generateId("ex"),
       name: "Russian Twists", 
       description: "A rotational exercise that targets the obliques. Sit with knees bent and feet elevated, lean back slightly, and rotate your torso from side to side.",
       sets: 3,
       repsPerSet: 24,
+      durationSeconds: null,
+      sequenceOrder: 2,
       muscleGroups: ["Obliques", "Core"],
       imageUrl: "https://images.unsplash.com/photo-1541534741688-6078c6bfb5c5?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1738&q=80",
       restSeconds: 40
     },
     { 
+      id: generateId("ex"),
       name: "Bicycle Crunches", 
       description: "A dynamic core exercise that engages multiple abdominal muscles. Lie on your back, bring opposite elbow to opposite knee in a cycling motion.",
       sets: 3,
       repsPerSet: 20,
+      durationSeconds: null,
+      sequenceOrder: 3,
       muscleGroups: ["Abs", "Obliques"],
       imageUrl: "https://images.unsplash.com/photo-1607962837359-5e7e89f86776?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1740&q=80",
       restSeconds: 30
     },
     { 
+      id: generateId("ex"),
       name: "Mountain Climbers", 
       description: "A dynamic exercise that works your core while elevating your heart rate. Start in a plank position and alternate bringing knees toward your chest in a running motion.",
       sets: 3,
       repsPerSet: 30,
+      durationSeconds: null,
+      sequenceOrder: 4,
       muscleGroups: ["Core", "Cardio", "Shoulders"],
       imageUrl: "https://images.unsplash.com/photo-1586401100295-7a8096fd231a?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1740&q=80",
       restSeconds: 45
@@ -117,37 +157,49 @@ export const sampleExercises = {
   ],
   cardio: [
     { 
+      id: generateId("ex"),
       name: "High Knees", 
       description: "A high-intensity cardio exercise. Run in place, bringing your knees up to hip level with each step, while pumping your arms.",
       sets: 3,
+      repsPerSet: 0,
       durationSeconds: 30,
+      sequenceOrder: 1,
       muscleGroups: ["Cardio", "Core"],
       imageUrl: "https://images.unsplash.com/photo-1434682881908-b43d0467b798?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1746&q=80",
       restSeconds: 20
     },
     { 
+      id: generateId("ex"),
       name: "Burpees", 
       description: "A full-body exercise that combines a squat, push-up, and jump. Drop into a squat position, kick feet back into a plank, perform a push-up, return to squat, then jump up.",
       sets: 3,
       repsPerSet: 10,
+      durationSeconds: null,
+      sequenceOrder: 2,
       muscleGroups: ["Full Body", "Cardio"],
       imageUrl: "https://images.unsplash.com/photo-1599058917212-d750089bc07e?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1738&q=80",
       restSeconds: 45
     },
     { 
+      id: generateId("ex"),
       name: "Jump Rope", 
       description: "A cardio exercise that improves coordination and burns calories. Jump with both feet as you swing a rope under your feet and over your head.",
       sets: 3,
+      repsPerSet: 0,
       durationSeconds: 60,
+      sequenceOrder: 3,
       muscleGroups: ["Cardio", "Calves"],
       imageUrl: "https://images.unsplash.com/photo-1518611012118-696072aa579a?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxzZWFyY2h8NHx8anVtcCUyMHJvcGV8ZW58MHx8MHx8&auto=format&fit=crop&w=900&q=60",
       restSeconds: 30
     },
     { 
+      id: generateId("ex"),
       name: "Jumping Lunges", 
       description: "A plyometric exercise that builds lower body strength and cardiovascular endurance. Perform alternating lunges while adding a jump between each lunge.",
       sets: 3,
       repsPerSet: 16,
+      durationSeconds: null,
+      sequenceOrder: 4,
       muscleGroups: ["Quadriceps", "Hamstrings", "Glutes", "Cardio"],
       imageUrl: "https://images.unsplash.com/photo-1434608519344-49d77a699e1d?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1744&q=80",
       restSeconds: 40
@@ -155,37 +207,49 @@ export const sampleExercises = {
   ],
   lowerBody: [
     { 
+      id: generateId("ex"),
       name: "Lunges", 
       description: "A lower body exercise that targets your quadriceps, hamstrings, and glutes. Step forward with one leg, lowering your hips until both knees are bent at 90-degree angles.",
       sets: 3,
       repsPerSet: 12,
+      durationSeconds: null,
+      sequenceOrder: 1,
       muscleGroups: ["Quadriceps", "Hamstrings", "Glutes"],
       imageUrl: "https://images.unsplash.com/photo-1434608519344-49d77a699e1d?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1744&q=80",
       restSeconds: 60
     },
     { 
+      id: generateId("ex"),
       name: "Deadlifts", 
       description: "A compound movement that works the entire posterior chain. Stand with feet hip-width apart, bend at hips and knees to lower and grab weights, then stand back up.",
       sets: 4,
       repsPerSet: 8,
+      durationSeconds: null,
+      sequenceOrder: 2,
       muscleGroups: ["Hamstrings", "Glutes", "Lower Back"],
       imageUrl: "https://images.unsplash.com/photo-1598575584108-62b878fa9cbd?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1740&q=80",
       restSeconds: 90
     },
     { 
+      id: generateId("ex"),
       name: "Calf Raises", 
       description: "An exercise that targets the calf muscles. Stand with feet shoulder-width apart, rise up onto the balls of your feet, then lower back down.",
       sets: 3,
       repsPerSet: 15,
+      durationSeconds: null,
+      sequenceOrder: 3,
       muscleGroups: ["Calves"],
       imageUrl: "https://images.unsplash.com/photo-1596357395217-80de13130e92?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1742&q=80",
       restSeconds: 45
     },
     { 
+      id: generateId("ex"),
       name: "Glute Bridges", 
       description: "A lower body exercise focusing on the glutes. Lie on your back with knees bent and feet flat, then raise your hips toward the ceiling.",
       sets: 3,
       repsPerSet: 15,
+      durationSeconds: null,
+      sequenceOrder: 4,
       muscleGroups: ["Glutes", "Hamstrings"],
       imageUrl: "https://images.unsplash.com/photo-1574680096145-d05b474e2155?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1740&q=80",
       restSeconds: 30
@@ -258,7 +322,15 @@ const workoutData = [
     exercise_type: "Flexibility",
     muscle_groups: ["Full Body"],
     equipment_needed: ["Exercise Mat", "Yoga Strap (optional)"],
-    exercises: sampleExercises.fullBody.map(ex => ({...ex, sets: 1, repsPerSet: 1, durationSeconds: 30, restSeconds: 15 }))
+    exercises: sampleExercises.fullBody.map((ex, index) => ({
+      ...ex,
+      id: generateId("flex"),
+      sets: 1,
+      repsPerSet: 1,
+      durationSeconds: 30,
+      sequenceOrder: index + 1,
+      restSeconds: 15
+    }))
   }
 ];
 
