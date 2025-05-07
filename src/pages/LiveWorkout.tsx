@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useRef } from "react";
 import Navbar from "@/components/layout/Navbar";
 import { Button } from "@/components/ui/button";
@@ -7,6 +8,7 @@ import { Play, Pause, RotateCcw, X, CheckCircle2, Camera, CameraOff } from "luci
 import { Link, useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
+import LoadingState from "@/components/workouts/detail/LoadingState";
 
 const LiveWorkout = () => {
   const { id } = useParams();
@@ -139,10 +141,18 @@ const LiveWorkout = () => {
         if (videoRef.current) {
           console.log("Setting video source...");
           videoRef.current.srcObject = stream;
-          // Ensure the video loads before playing
+          
+          // Make sure the video element is visible
+          if (videoRef.current.style.display === 'none') {
+            videoRef.current.style.display = 'block';
+          }
+          
+          // Use the onloadedmetadata event to ensure video starts playing
           videoRef.current.onloadedmetadata = () => {
             console.log("Video metadata loaded, playing video");
-            videoRef.current?.play().catch(e => console.error("Error playing video:", e));
+            if (videoRef.current) {
+              videoRef.current.play().catch(e => console.error("Error playing video:", e));
+            }
           };
           
           streamRef.current = stream;
@@ -272,7 +282,9 @@ const LiveWorkout = () => {
   };
 
   const startWorkout = async () => {
-    // Fixed to allow starting workout once camera is active
+    console.log("Starting workout. Camera active:", cameraActive);
+    
+    // Allow starting workout if camera is active
     if (!cameraActive) {
       toast({
         variant: "destructive",
@@ -428,7 +440,7 @@ const LiveWorkout = () => {
         // Check if current exercise is complete
         if (currentRep >= (workoutData?.exercises[currentExercise]?.reps || 10)) {
           // Move to next exercise if all reps completed
-          if (currentExercise < (workoutData?.exercises.length || 0) - 1) {
+          if (currentExercise < (workoutData?.exercises?.length || 0) - 1) {
             setCurrentExercise(prev => prev + 1);
             setCurrentRep(0);
             
@@ -487,15 +499,125 @@ const LiveWorkout = () => {
     return Math.floor((currentRep / currentExerciseReps) * 100);
   }
 
+  // Complete workout function
+  const completeWorkout = async () => {
+    // Update the workout session to completed if exists
+    if (sessionId && user) {
+      try {
+        const { error } = await supabase
+          .from('workout_sessions')
+          .update({
+            completed_at: new Date().toISOString(),
+            duration_seconds: timeElapsed,
+            calories_burned: Math.floor(caloriesBurned)
+          })
+          .eq('id', sessionId);
+          
+        if (error) throw error;
+        
+        // Update user stats
+        const { data: statsData, error: statsError } = await supabase
+          .from('user_stats')
+          .select('*')
+          .eq('user_id', user.id)
+          .single();
+          
+        if (statsError && statsError.code !== 'PGRST116') {
+          throw statsError;
+        }
+        
+        const now = new Date().toISOString();
+        let newStreak = 1;
+        let updateData: any = {
+          user_id: user.id,
+          total_workouts: 1,
+          total_workout_time: timeElapsed,
+          total_calories_burned: Math.floor(caloriesBurned),
+          last_workout_date: now,
+          workout_streak: 1
+        };
+        
+        if (statsData) {
+          // Calculate streak
+          if (statsData.last_workout_date) {
+            const lastWorkout = new Date(statsData.last_workout_date);
+            const today = new Date();
+            const diffDays = Math.floor((today.getTime() - lastWorkout.getTime()) / (1000 * 60 * 60 * 24));
+            
+            if (diffDays <= 1) {
+              // Either today or yesterday, maintain streak
+              newStreak = (statsData.workout_streak || 0) + 1;
+            } else {
+              // Break in streak
+              newStreak = 1;
+            }
+          }
+          
+          updateData = {
+            total_workouts: (statsData.total_workouts || 0) + 1,
+            total_workout_time: (statsData.total_workout_time || 0) + timeElapsed,
+            total_calories_burned: (statsData.total_calories_burned || 0) + Math.floor(caloriesBurned),
+            last_workout_date: now,
+            workout_streak: newStreak
+          };
+          
+          // Update existing stats
+          await supabase
+            .from('user_stats')
+            .update(updateData)
+            .eq('user_id', user.id);
+        } else {
+          // Create new stats record
+          await supabase
+            .from('user_stats')
+            .insert([updateData]);
+        }
+        
+      } catch (err) {
+        console.error("Error updating workout session:", err);
+      }
+    }
+    
+    resetWorkout();
+    setWorkoutComplete(true);
+    
+    // Stop camera when workout completes
+    if (cameraActive) {
+      stopMotionDetection();
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach(track => track.stop());
+        streamRef.current = null;
+        
+        if (videoRef.current) {
+          videoRef.current.srcObject = null;
+        }
+        setCameraActive(false);
+      }
+    }
+  };
+
+  const pauseWorkout = () => {
+    setIsPaused(!isPaused);
+  };
+
+  const resetWorkout = () => {
+    setIsWorkoutActive(false);
+    setIsPaused(false);
+    setCurrentExercise(0);
+    setCurrentRep(0);
+    setTimeElapsed(0);
+    setCaloriesBurned(0);
+  };
+
   // Current exercise data
-  const currentExerciseData = workoutData?.exercises[currentExercise];
+  const currentExerciseData = workoutData?.exercises?.[currentExercise];
 
   if (workoutLoading) {
     return (
       <>
         <Navbar />
         <div className="container mx-auto px-6 pt-28 pb-12 min-h-screen flex justify-center items-center">
-          <p className="text-xl">Loading workout...</p>
+          <LoadingState />
         </div>
       </>
     );
@@ -574,7 +696,7 @@ const LiveWorkout = () => {
                       playsInline
                       muted
                       className="h-full w-full object-cover"
-                      style={{ transform: 'scaleX(-1)' }} // Mirror effect for better UX
+                      style={{ transform: 'scaleX(-1)', minHeight: '400px' }} // Mirror effect for better UX with min-height
                     />
                   ) : (
                     <div className="text-center p-10">
@@ -714,12 +836,12 @@ const LiveWorkout = () => {
                   <div>
                     <p className="text-sm text-fitmentor-medium-gray mb-2">Workout Progress</p>
                     <Progress 
-                      value={Math.floor(((currentExercise) / (workoutData?.exercises.length || 1)) * 100)} 
+                      value={Math.floor(((currentExercise) / (workoutData?.exercises?.length || 1)) * 100)} 
                       className="h-2 mb-1" 
                     />
                     <div className="flex justify-between text-xs text-fitmentor-medium-gray">
                       <span>Exercise {currentExercise + 1}</span>
-                      <span>{workoutData?.exercises.length || 0} total</span>
+                      <span>{workoutData?.exercises?.length || 0} total</span>
                     </div>
                   </div>
                 </div>
