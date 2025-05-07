@@ -333,172 +333,6 @@ const LiveWorkout = () => {
     setCaloriesBurned(0);
   };
 
-  const completeWorkout = async () => {
-    // Update the workout session to completed if exists
-    if (sessionId && user) {
-      try {
-        const { error } = await supabase
-          .from('workout_sessions')
-          .update({
-            completed_at: new Date().toISOString(),
-            duration_seconds: timeElapsed,
-            calories_burned: Math.floor(caloriesBurned)
-          })
-          .eq('id', sessionId);
-          
-        if (error) throw error;
-        
-        // Update user stats
-        const { data: statsData, error: statsError } = await supabase
-          .from('user_stats')
-          .select('*')
-          .eq('user_id', user.id)
-          .single();
-          
-        if (statsError && statsError.code !== 'PGRST116') {
-          throw statsError;
-        }
-        
-        const now = new Date().toISOString();
-        let newStreak = 1;
-        let updateData: any = {
-          user_id: user.id,
-          total_workouts: 1,
-          total_workout_time: timeElapsed,
-          total_calories_burned: Math.floor(caloriesBurned),
-          last_workout_date: now,
-          workout_streak: 1
-        };
-        
-        if (statsData) {
-          // Calculate streak
-          if (statsData.last_workout_date) {
-            const lastWorkout = new Date(statsData.last_workout_date);
-            const today = new Date();
-            const diffDays = Math.floor((today.getTime() - lastWorkout.getTime()) / (1000 * 60 * 60 * 24));
-            
-            if (diffDays <= 1) {
-              // Either today or yesterday, maintain streak
-              newStreak = (statsData.workout_streak || 0) + 1;
-            } else {
-              // Break in streak
-              newStreak = 1;
-            }
-          }
-          
-          updateData = {
-            total_workouts: (statsData.total_workouts || 0) + 1,
-            total_workout_time: (statsData.total_workout_time || 0) + timeElapsed,
-            total_calories_burned: (statsData.total_calories_burned || 0) + Math.floor(caloriesBurned),
-            last_workout_date: now,
-            workout_streak: newStreak
-          };
-          
-          // Update existing stats
-          await supabase
-            .from('user_stats')
-            .update(updateData)
-            .eq('user_id', user.id);
-        } else {
-          // Create new stats record
-          await supabase
-            .from('user_stats')
-            .insert([updateData]);
-        }
-        
-      } catch (err) {
-        console.error("Error updating workout session:", err);
-      }
-    }
-    
-    resetWorkout();
-    setWorkoutComplete(true);
-  };
-
-  useEffect(() => {
-    let interval: NodeJS.Timeout | null = null;
-    
-    if (isWorkoutActive && !isPaused) {
-      interval = setInterval(() => {
-        // Update time elapsed
-        setTimeElapsed(prev => prev + 1);
-        
-        // Update calories (simplified calculation)
-        setCaloriesBurned(prev => Math.min(prev + 0.15, 999));
-        
-        // If not using motion detection for reps or as a fallback 
-        if (!cameraActive || !canvasRef.current) {
-          // Simulate rep counting
-          if (currentRep < (workoutData?.exercises[currentExercise]?.reps || 10)) {
-            // Every 3 seconds, increment rep for visual demonstration
-            if (timeElapsed % 3 === 0) {
-              setCurrentRep(prev => prev + 1);
-            }
-          }
-        }
-        
-        // Check if current exercise is complete
-        if (currentRep >= (workoutData?.exercises[currentExercise]?.reps || 10)) {
-          // Move to next exercise if all reps completed
-          if (currentExercise < (workoutData?.exercises?.length || 0) - 1) {
-            setCurrentExercise(prev => prev + 1);
-            setCurrentRep(0);
-            
-            toast({
-              title: `Next exercise: ${workoutData?.exercises[currentExercise + 1]?.name || 'Unknown'}`,
-              description: `Get ready!`,
-            });
-          } else {
-            // Workout complete
-            completeWorkout();
-            
-            toast({
-              title: "Workout Complete! 🎉",
-              description: "Great job! You've completed your workout.",
-            });
-          }
-        }
-      }, 1000);
-    }
-    
-    return () => {
-      if (interval) clearInterval(interval);
-    };
-  }, [
-    isWorkoutActive, 
-    isPaused, 
-    currentExercise, 
-    currentRep, 
-    timeElapsed, 
-    workoutData, 
-    toast,
-    cameraActive
-  ]);
-
-  // Clean up camera on unmount
-  useEffect(() => {
-    return () => {
-      stopMotionDetection();
-      if (streamRef.current) {
-        streamRef.current.getTracks().forEach(track => track.stop());
-      }
-    };
-  }, []);
-
-  // Format time from seconds to MM:SS
-  function formatTime(seconds: number) {
-    const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
-  }
-
-  // Calculate progress percentage for current exercise
-  function calculateProgress() {
-    if (!isWorkoutActive) return 0;
-    const currentExerciseReps = workoutData?.exercises[currentExercise]?.reps || 10;
-    return Math.floor((currentRep / currentExerciseReps) * 100);
-  }
-
   // Complete workout function
   const completeWorkout = async () => {
     // Update the workout session to completed if exists
@@ -596,18 +430,89 @@ const LiveWorkout = () => {
     }
   };
 
-  const pauseWorkout = () => {
-    setIsPaused(!isPaused);
-  };
+  useEffect(() => {
+    let interval: NodeJS.Timeout | null = null;
+    
+    if (isWorkoutActive && !isPaused) {
+      interval = setInterval(() => {
+        // Update time elapsed
+        setTimeElapsed(prev => prev + 1);
+        
+        // Update calories (simplified calculation)
+        setCaloriesBurned(prev => Math.min(prev + 0.15, 999));
+        
+        // If not using motion detection for reps or as a fallback 
+        if (!cameraActive || !canvasRef.current) {
+          // Simulate rep counting
+          if (currentRep < (workoutData?.exercises[currentExercise]?.reps || 10)) {
+            // Every 3 seconds, increment rep for visual demonstration
+            if (timeElapsed % 3 === 0) {
+              setCurrentRep(prev => prev + 1);
+            }
+          }
+        }
+        
+        // Check if current exercise is complete
+        if (currentRep >= (workoutData?.exercises[currentExercise]?.reps || 10)) {
+          // Move to next exercise if all reps completed
+          if (currentExercise < (workoutData?.exercises?.length || 0) - 1) {
+            setCurrentExercise(prev => prev + 1);
+            setCurrentRep(0);
+            
+            toast({
+              title: `Next exercise: ${workoutData?.exercises[currentExercise + 1]?.name || 'Unknown'}`,
+              description: `Get ready!`,
+            });
+          } else {
+            // Workout complete
+            completeWorkout();
+            
+            toast({
+              title: "Workout Complete! 🎉",
+              description: "Great job! You've completed your workout.",
+            });
+          }
+        }
+      }, 1000);
+    }
+    
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, [
+    isWorkoutActive, 
+    isPaused, 
+    currentExercise, 
+    currentRep, 
+    timeElapsed, 
+    workoutData, 
+    toast,
+    cameraActive
+  ]);
 
-  const resetWorkout = () => {
-    setIsWorkoutActive(false);
-    setIsPaused(false);
-    setCurrentExercise(0);
-    setCurrentRep(0);
-    setTimeElapsed(0);
-    setCaloriesBurned(0);
-  };
+  // Clean up camera on unmount
+  useEffect(() => {
+    return () => {
+      stopMotionDetection();
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach(track => track.stop());
+      }
+    };
+  }, []);
+
+  // Format time from seconds to MM:SS
+  function formatTime(seconds: number) {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+  }
+
+  // Calculate progress percentage for current exercise
+  function calculateProgress() {
+    if (!isWorkoutActive) return 0;
+    const currentExerciseReps = workoutData?.exercises[currentExercise]?.reps || 10;
+    return Math.floor((currentRep / currentExerciseReps) * 100);
+  }
 
   // Current exercise data
   const currentExerciseData = workoutData?.exercises?.[currentExercise];
