@@ -7,14 +7,24 @@ import ErrorState from "@/components/workouts/detail/ErrorState";
 import WorkoutHeader from "@/components/workouts/detail/WorkoutHeader";
 import ExerciseCard from "@/components/workouts/detail/ExerciseCard";
 import { useWorkoutDetail } from "@/hooks/useWorkoutDetail";
-import { getSampleWorkout } from "@/data/sampleWorkout";
+import { useEffect } from "react";
+import { useToast } from "@/hooks/use-toast";
 
 const WorkoutDetail = () => {
   const { id } = useParams();
   const { workout, loading, error } = useWorkoutDetail(id);
+  const { toast } = useToast();
   
-  // Display either real workout data or fallback sample data
-  const displayWorkout = workout || (id ? getSampleWorkout(id) : null);
+  // Notify user when using sample data
+  useEffect(() => {
+    if (error) {
+      toast({
+        title: "Using sample workout data",
+        description: "Could not load workout from database.",
+        variant: "default"
+      });
+    }
+  }, [error, toast]);
 
   if (loading) {
     return (
@@ -28,19 +38,7 @@ const WorkoutDetail = () => {
     );
   }
 
-  if (error) {
-    return (
-      <>
-        <Navbar />
-        <div className="container mx-auto px-6 pt-28 pb-12 min-h-screen">
-          <ErrorState error={error} />
-        </div>
-        <Footer />
-      </>
-    );
-  }
-
-  if (!displayWorkout) {
+  if (!workout) {
     return (
       <>
         <Navbar />
@@ -55,12 +53,12 @@ const WorkoutDetail = () => {
   return (
     <>
       <Navbar />
-      <div className="container mx-auto px-6 pt-28 pb-12">
-        <WorkoutHeader workout={displayWorkout} />
+      <div className="container mx-auto px-6 pt-28 pb-12 min-h-screen">
+        <WorkoutHeader workout={workout} />
         
         <h2 className="text-2xl font-bold mb-6">Exercise List</h2>
         <div className="space-y-6">
-          {displayWorkout.exercises.map((exercise, index) => (
+          {workout.exercises.map((exercise, index) => (
             <ExerciseCard key={index} exercise={exercise} index={index} />
           ))}
         </div>

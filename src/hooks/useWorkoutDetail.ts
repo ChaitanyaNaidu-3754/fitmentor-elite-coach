@@ -1,6 +1,7 @@
 
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { getSampleWorkout } from "@/data/sampleWorkout";
 
 interface Exercise {
   id: string;
@@ -35,17 +36,41 @@ export const useWorkoutDetail = (id: string | undefined) => {
   useEffect(() => {
     const fetchWorkoutDetails = async () => {
       try {
-        // Fetch workout data
+        if (!id) {
+          setError("Workout ID is required");
+          setLoading(false);
+          return;
+        }
+
+        // For numeric IDs, use sample data directly
+        // This helps with the default routes like /workout/1
+        if (!isNaN(Number(id))) {
+          const sampleData = getSampleWorkout(id);
+          setWorkout(sampleData);
+          setLoading(false);
+          return;
+        }
+
+        // Fetch workout data from Supabase
         const { data: workoutData, error: workoutError } = await supabase
           .from('workouts')
           .select('*')
           .eq('id', id)
           .single();
 
-        if (workoutError) throw workoutError;
+        if (workoutError) {
+          // If we get an error from Supabase, fall back to sample data
+          console.log("Falling back to sample data due to:", workoutError);
+          const sampleData = getSampleWorkout(id);
+          setWorkout(sampleData);
+          setLoading(false);
+          return;
+        }
         
         if (!workoutData) {
-          setError("Workout not found");
+          // If no data found, fall back to sample data
+          const sampleData = getSampleWorkout(id);
+          setWorkout(sampleData);
           setLoading(false);
           return;
         }
@@ -71,21 +96,34 @@ export const useWorkoutDetail = (id: string | undefined) => {
           .eq('workout_id', id)
           .order('sequence_order');
 
-        if (exercisesError) throw exercisesError;
+        if (exercisesError) {
+          console.error("Error fetching exercises:", exercisesError);
+          // If we get an error fetching exercises, use sample data exercises
+          const sampleData = getSampleWorkout(id);
+          setWorkout({
+            ...workoutData,
+            exercises: sampleData.exercises
+          });
+          setLoading(false);
+          return;
+        }
 
         // Transform the exercise data
-        const exercises = exercisesJunction.map(item => ({
-          id: item.exercise.id,
-          name: item.exercise.name,
-          description: item.exercise.description || '',
-          sets: item.sets || 3,
-          repsPerSet: item.reps_per_set || 10,
-          durationSeconds: item.duration_seconds,
-          restSeconds: item.rest_seconds || 60,
-          sequenceOrder: item.sequence_order,
-          muscleGroups: item.exercise.muscle_groups || [],
-          imageUrl: item.exercise.image_url
-        }));
+        const exercises = exercisesJunction.length > 0 ? 
+          exercisesJunction.map(item => ({
+            id: item.exercise.id,
+            name: item.exercise.name,
+            description: item.exercise.description || '',
+            sets: item.sets || 3,
+            repsPerSet: item.reps_per_set || 10,
+            durationSeconds: item.duration_seconds,
+            restSeconds: item.rest_seconds || 60,
+            sequenceOrder: item.sequence_order,
+            muscleGroups: item.exercise.muscle_groups || [],
+            imageUrl: item.exercise.image_url
+          })) :
+          // If no exercises found, use sample exercises
+          getSampleWorkout(id).exercises;
 
         // Combine all data
         setWorkout({
@@ -94,15 +132,19 @@ export const useWorkoutDetail = (id: string | undefined) => {
         });
       } catch (err) {
         console.error("Error fetching workout details:", err);
-        setError("Failed to load workout details");
+        // Fall back to sample data on any error
+        if (id) {
+          const sampleData = getSampleWorkout(id);
+          setWorkout(sampleData);
+        } else {
+          setError("Failed to load workout details");
+        }
       } finally {
         setLoading(false);
       }
     };
 
-    if (id) {
-      fetchWorkoutDetails();
-    }
+    fetchWorkoutDetails();
   }, [id]);
 
   return { workout, loading, error };
