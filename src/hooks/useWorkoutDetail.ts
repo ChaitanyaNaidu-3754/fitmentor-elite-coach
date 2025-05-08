@@ -45,22 +45,23 @@ export const useWorkoutDetail = (id: string | undefined) => {
         // For numeric IDs, use sample data directly
         // This helps with the default routes like /workout/1
         if (!isNaN(Number(id))) {
+          console.log(`Using sample workout data for numeric ID: ${id}`);
           const sampleData = getSampleWorkout(id);
           setWorkout(sampleData);
           setLoading(false);
           return;
         }
 
+        console.log(`Fetching workout with ID: ${id}`);
         // Fetch workout data from Supabase
         const { data: workoutData, error: workoutError } = await supabase
           .from('workouts')
           .select('*')
           .eq('id', id)
-          .single();
+          .maybeSingle();  // Using maybeSingle instead of single to avoid errors
 
         if (workoutError) {
-          // If we get an error from Supabase, fall back to sample data
-          console.log("Falling back to sample data due to:", workoutError);
+          console.error("Error fetching workout:", workoutError);
           const sampleData = getSampleWorkout(id);
           setWorkout(sampleData);
           setLoading(false);
@@ -68,13 +69,14 @@ export const useWorkoutDetail = (id: string | undefined) => {
         }
         
         if (!workoutData) {
-          // If no data found, fall back to sample data
+          console.log("No workout found, using sample data");
           const sampleData = getSampleWorkout(id);
           setWorkout(sampleData);
           setLoading(false);
           return;
         }
 
+        console.log("Workout found:", workoutData);
         // Fetch exercises for this workout
         const { data: exercisesJunction, error: exercisesError } = await supabase
           .from('workout_exercises')
@@ -108,12 +110,14 @@ export const useWorkoutDetail = (id: string | undefined) => {
           return;
         }
 
+        console.log(`Found ${exercisesJunction?.length || 0} exercises`);
+        
         // Transform the exercise data
-        const exercises = exercisesJunction.length > 0 ? 
+        const exercises = exercisesJunction && exercisesJunction.length > 0 ? 
           exercisesJunction.map(item => ({
             id: item.exercise.id,
             name: item.exercise.name,
-            description: item.exercise.description || '',
+            description: item.exercise.description || 'No description available',
             sets: item.sets || 3,
             repsPerSet: item.reps_per_set || 10,
             durationSeconds: item.duration_seconds,

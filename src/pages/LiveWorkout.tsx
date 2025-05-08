@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useRef } from "react";
 import Navbar from "@/components/layout/Navbar";
 import { Button } from "@/components/ui/button";
@@ -9,10 +8,12 @@ import { Link, useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 import LoadingState from "@/components/workouts/detail/LoadingState";
+import { useWorkoutDetail } from "@/hooks/useWorkoutDetail";
 
 const LiveWorkout = () => {
   const { id } = useParams();
   const { user } = useAuth();
+  const { workout: workoutData, loading: workoutLoading, error: workoutError } = useWorkoutDetail(id);
   const [isWorkoutActive, setIsWorkoutActive] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
   const [currentExercise, setCurrentExercise] = useState(0);
@@ -22,8 +23,6 @@ const LiveWorkout = () => {
   const [cameraActive, setCameraActive] = useState(false);
   const [workoutComplete, setWorkoutComplete] = useState(false);
   const [cameraPermission, setCameraPermission] = useState<boolean | null>(null);
-  const [workoutData, setWorkoutData] = useState<any>(null);
-  const [workoutLoading, setWorkoutLoading] = useState(true);
   const [sessionId, setSessionId] = useState<string | null>(null);
   const { toast } = useToast();
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -31,100 +30,10 @@ const LiveWorkout = () => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const requestAnimationFrameRef = useRef<number | null>(null);
   
-  // Sample workout data (as fallback)
-  const defaultWorkout = {
-    id: id || "default",
-    name: "Full Body Power",
-    duration_minutes: 45,
-    exercises: [
-      { id: "1", name: "Jumping Jacks", reps: 20, duration: 60, image_url: null, rest_seconds: 30 },
-      { id: "2", name: "Push-ups", reps: 15, duration: 60, image_url: null, rest_seconds: 30 },
-      { id: "3", name: "Squats", reps: 20, duration: 60, image_url: null, rest_seconds: 30 },
-      { id: "4", name: "Plank", reps: 1, duration: 60, image_url: null, rest_seconds: 30 },
-      { id: "5", name: "Mountain Climbers", reps: 30, duration: 60, image_url: null, rest_seconds: 30 },
-    ],
-  };
-
-  useEffect(() => {
-    // Fetch workout data if ID is provided
-    const fetchWorkoutData = async () => {
-      if (!id) {
-        setWorkoutData(defaultWorkout);
-        setWorkoutLoading(false);
-        return;
-      }
-      
-      try {
-        const { data: workoutData, error: workoutError } = await supabase
-          .from('workouts')
-          .select('*')
-          .eq('id', id)
-          .single();
-          
-        if (workoutError) throw workoutError;
-        
-        if (!workoutData) {
-          throw new Error("Workout not found");
-        }
-        
-        // Fetch exercises for this workout
-        const { data: exercisesJunction, error: exercisesError } = await supabase
-          .from('workout_exercises')
-          .select(`
-            id,
-            sets,
-            reps_per_set,
-            duration_seconds,
-            rest_seconds,
-            sequence_order,
-            exercise:exercise_id (
-              id,
-              name,
-              description,
-              image_url
-            )
-          `)
-          .eq('workout_id', id)
-          .order('sequence_order');
-          
-        if (exercisesError) throw exercisesError;
-        
-        // Format the exercises
-        const exercises = exercisesJunction.map(item => ({
-          id: item.exercise.id,
-          name: item.exercise.name,
-          reps: item.reps_per_set || 10,
-          sets: item.sets || 3,
-          duration: item.duration_seconds || 60,
-          rest_seconds: item.rest_seconds || 30,
-          image_url: item.exercise.image_url
-        }));
-        
-        setWorkoutData({
-          ...workoutData,
-          exercises: exercises.length > 0 ? exercises : defaultWorkout.exercises
-        });
-      } catch (error) {
-        console.error("Error fetching workout:", error);
-        toast({
-          variant: "destructive",
-          title: "Error",
-          description: "Could not load workout data. Using default workout.",
-        });
-        setWorkoutData(defaultWorkout);
-      } finally {
-        setWorkoutLoading(false);
-      }
-    };
-    
-    fetchWorkoutData();
-  }, [id, toast]);
-
   // Improved camera initialization function
   const startStopCamera = async () => {
     if (!cameraActive) {
       try {
-        // Explicitly log the camera request
         console.log("Requesting camera access...");
         
         const stream = await navigator.mediaDevices.getUserMedia({ 
@@ -137,51 +46,49 @@ const LiveWorkout = () => {
         });
         
         console.log("Camera access granted:", stream);
+        streamRef.current = stream;
         
-        // Make sure video ref exists before proceeding
-        if (!videoRef.current) {
-          console.error("Video reference not available");
-          toast({
-            variant: "destructive",
-            title: "Error",
-            description: "Unable to access video element. Please refresh the page and try again.",
-          });
-          return;
-        }
-        
-        // Set video stream and display
-        videoRef.current.srcObject = stream;
-        videoRef.current.style.display = 'block';
-        
-        // Ensure video plays after metadata is loaded
-        videoRef.current.onloadedmetadata = () => {
-          console.log("Video metadata loaded, playing video");
+        // Wait for next render cycle to ensure videoRef is available
+        setTimeout(() => {
           if (videoRef.current) {
-            videoRef.current.play().catch(e => {
-              console.error("Error playing video:", e);
-              toast({
-                variant: "destructive",
-                title: "Error",
-                description: "Unable to start video playback. Please check browser settings.",
-              });
+            videoRef.current.srcObject = stream;
+            videoRef.current.style.display = 'block';
+            
+            videoRef.current.onloadedmetadata = () => {
+              console.log("Video metadata loaded, playing video");
+              if (videoRef.current) {
+                videoRef.current.play().catch(e => {
+                  console.error("Error playing video:", e);
+                  toast({
+                    variant: "destructive",
+                    title: "Error",
+                    description: "Unable to start video playback. Please check browser settings.",
+                  });
+                });
+              }
+            };
+            
+            setCameraActive(true);
+            setCameraPermission(true);
+            toast({
+              title: "Camera activated",
+              description: "Your form will be analyzed in real-time",
+            });
+            
+            // Start motion detection once camera is active
+            if (canvasRef.current) {
+              console.log("Starting motion detection...");
+              startMotionDetection();
+            }
+          } else {
+            console.error("Video reference still not available after timeout");
+            toast({
+              variant: "destructive",
+              title: "Error",
+              description: "Unable to access video element. Please refresh the page and try again.",
             });
           }
-        };
-        
-        streamRef.current = stream;
-        setCameraActive(true);
-        setCameraPermission(true);
-        
-        toast({
-          title: "Camera activated",
-          description: "Your form will be analyzed in real-time",
-        });
-        
-        // Start motion detection once camera is active
-        if (canvasRef.current) {
-          console.log("Starting motion detection...");
-          startMotionDetection();
-        }
+        }, 100); // Small delay to ensure DOM is updated
       } catch (err) {
         console.error("Error accessing camera:", err);
         setCameraPermission(false);
@@ -201,6 +108,10 @@ const LiveWorkout = () => {
           videoRef.current.srcObject = null;
         }
         setCameraActive(false);
+        toast({
+          title: "Camera disabled",
+          description: "Camera has been turned off",
+        });
       }
     }
   };
@@ -250,7 +161,7 @@ const LiveWorkout = () => {
           console.log(`Movement detected: ${movement} - incrementing rep count`);
           // When significant movement is detected, increment rep count
           if (timeElapsed % 2 === 0) { // Limit the rep counting rate
-            if (currentRep < (workoutData?.exercises[currentExercise]?.reps || 10)) {
+            if (currentRep < (workoutData?.exercises[currentExercise]?.repsPerSet || 10)) {
               setCurrentRep(prevRep => prevRep + 1);
             }
           }
@@ -454,7 +365,7 @@ const LiveWorkout = () => {
         // If not using motion detection for reps or as a fallback 
         if (!cameraActive || !canvasRef.current) {
           // Simulate rep counting
-          if (currentRep < (workoutData?.exercises[currentExercise]?.reps || 10)) {
+          if (currentRep < (workoutData?.exercises[currentExercise]?.repsPerSet || 10)) {
             // Every 3 seconds, increment rep for visual demonstration
             if (timeElapsed % 3 === 0) {
               setCurrentRep(prev => prev + 1);
@@ -463,7 +374,7 @@ const LiveWorkout = () => {
         }
         
         // Check if current exercise is complete
-        if (currentRep >= (workoutData?.exercises[currentExercise]?.reps || 10)) {
+        if (currentRep >= (workoutData?.exercises[currentExercise]?.repsPerSet || 10)) {
           // Move to next exercise if all reps completed
           if (currentExercise < (workoutData?.exercises?.length || 0) - 1) {
             setCurrentExercise(prev => prev + 1);
@@ -520,12 +431,9 @@ const LiveWorkout = () => {
   // Calculate progress percentage for current exercise
   function calculateProgress() {
     if (!isWorkoutActive) return 0;
-    const currentExerciseReps = workoutData?.exercises[currentExercise]?.reps || 10;
+    const currentExerciseReps = workoutData?.exercises[currentExercise]?.repsPerSet || 10;
     return Math.floor((currentRep / currentExerciseReps) * 100);
   }
-
-  // Current exercise data
-  const currentExerciseData = workoutData?.exercises?.[currentExercise];
 
   if (workoutLoading) {
     return (
@@ -604,16 +512,17 @@ const LiveWorkout = () => {
                     className="hidden"
                   ></canvas>
                   
-                  {cameraActive ? (
-                    <video
-                      ref={videoRef}
-                      autoPlay
-                      playsInline
-                      muted
-                      className="h-full w-full object-cover"
-                      style={{ transform: 'scaleX(-1)', minHeight: '400px' }} // Mirror effect for better UX with min-height
-                    />
-                  ) : (
+                  {/* Video element - Always render but conditionally display */}
+                  <video
+                    ref={videoRef}
+                    autoPlay
+                    playsInline
+                    muted
+                    className={`h-full w-full object-cover ${cameraActive ? 'block' : 'hidden'}`}
+                    style={{ transform: 'scaleX(-1)', minHeight: '400px' }} // Mirror effect for better UX with min-height
+                  />
+                  
+                  {!cameraActive && (
                     <div className="text-center p-10">
                       <div className="inline-flex items-center justify-center p-4 rounded-full bg-fitmentor-dark-gray mb-4">
                         <Camera size={32} className="text-fitmentor-cream" />
@@ -645,7 +554,7 @@ const LiveWorkout = () => {
                       <div className="flex items-center justify-between mt-2">
                         <div>
                           <p className="text-fitmentor-medium-gray text-sm">
-                            Rep {currentRep} of {workoutData?.exercises[currentExercise]?.reps || 10}
+                            Rep {currentRep} of {workoutData?.exercises[currentExercise]?.repsPerSet || 10}
                           </p>
                         </div>
                         <Progress value={calculateProgress()} className="w-1/2 h-2" />
@@ -676,7 +585,7 @@ const LiveWorkout = () => {
                       ) : (
                         <div className="flex gap-3">
                           <Button 
-                            onClick={pauseWorkout}
+                            onClick={() => setIsPaused(!isPaused)}
                             variant="outline"
                             className="border-fitmentor-cream/30 text-fitmentor-cream hover:bg-fitmentor-cream hover:text-fitmentor-black"
                           >
@@ -745,7 +654,7 @@ const LiveWorkout = () => {
                     <Progress value={calculateProgress()} className="h-2 mb-1" />
                     <div className="flex justify-between text-xs text-fitmentor-medium-gray">
                       <span>{currentRep} reps</span>
-                      <span>{workoutData?.exercises[currentExercise]?.reps || 10} reps</span>
+                      <span>{workoutData?.exercises[currentExercise]?.repsPerSet || 10} reps</span>
                     </div>
                   </div>
                   
