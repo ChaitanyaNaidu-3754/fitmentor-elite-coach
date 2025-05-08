@@ -21,7 +21,7 @@ const Navbar = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const isMobile = useIsMobile();
   const location = useLocation();
-  const { user, loading } = useAuth();
+  const { user, loading, signOut } = useAuth();
 
   useEffect(() => {
     const handleScroll = () => {
@@ -41,50 +41,46 @@ const Navbar = () => {
     setIsMenuOpen(false);
   }, [location.pathname]);
 
-  // Navigation items
-  const navItems = [
+  // Public navigation items (accessible without login)
+  const publicNavItems = [
     {
       name: "Home",
       path: "/",
       icon: <Home size={18} />,
-      authRequired: false,
     },
+  ];
+
+  // Private navigation items (require authentication)
+  const privateNavItems = [
     {
       name: "Dashboard",
       path: "/dashboard",
       icon: <BarChart3 size={18} />,
-      authRequired: true,
     },
     {
       name: "Workouts",
       path: "/workouts",
       icon: <Dumbbell size={18} />,
-      authRequired: false,
     },
     {
       name: "Nutrition",
       path: "/nutrition",
       icon: <Apple size={18} />,
-      authRequired: false,
     },
     {
       name: "Goals",
       path: "/goals",
       icon: <Target size={18} />,
-      authRequired: true,
     },
     {
       name: "Profile",
       path: "/profile",
       icon: <User size={18} />,
-      authRequired: true,
     },
   ];
 
-  // Filter navigation items based on authentication
-  const filteredNavItems = navItems.filter(
-    (item) => !item.authRequired || (user && item.authRequired)
-  );
+  // Show private nav items only if authenticated
+  const navItems = user ? [...publicNavItems, ...privateNavItems] : publicNavItems;
 
   return (
     <header
@@ -108,7 +104,7 @@ const Navbar = () => {
           {/* Desktop Navigation */}
           {!isMobile && (
             <nav className="hidden md:flex items-center space-x-1">
-              {filteredNavItems.map((item) => (
+              {navItems.map((item) => (
                 <Link
                   key={item.name}
                   to={item.path}
@@ -126,7 +122,7 @@ const Navbar = () => {
           )}
 
           {/* Authentication Button or Mobile Menu Toggle */}
-          <div>
+          <div className="flex items-center gap-2">
             {isMobile ? (
               <Button
                 variant="ghost"
@@ -136,14 +132,33 @@ const Navbar = () => {
               >
                 {isMenuOpen ? <X size={24} /> : <Menu size={24} />}
               </Button>
-            ) : !user && !loading ? (
-              <Link to="/login">
-                <Button className="secondary-button">
-                  <LogIn size={18} className="mr-2" />
-                  Login
-                </Button>
-              </Link>
-            ) : null}
+            ) : (
+              <>
+                {!loading && !user ? (
+                  <div className="flex gap-2">
+                    <Link to="/login">
+                      <Button className="secondary-button">
+                        <LogIn size={18} className="mr-2" />
+                        Login
+                      </Button>
+                    </Link>
+                    <Link to="/register">
+                      <Button className="premium-button">
+                        Sign Up
+                      </Button>
+                    </Link>
+                  </div>
+                ) : !loading && user ? (
+                  <Button 
+                    variant="ghost" 
+                    onClick={signOut}
+                    className="text-fitmentor-cream hover:text-fitmentor-cream/80 hover:bg-fitmentor-cream/10"
+                  >
+                    Log Out
+                  </Button>
+                ) : null}
+              </>
+            )}
           </div>
         </div>
 
@@ -151,7 +166,7 @@ const Navbar = () => {
         {isMobile && isMenuOpen && (
           <div className="md:hidden mt-4 bg-fitmentor-dark-gray/30 backdrop-blur-sm rounded-lg p-4 animate-fade-in-down">
             <nav className="flex flex-col space-y-1">
-              {filteredNavItems.map((item) => (
+              {navItems.map((item) => (
                 <Link
                   key={item.name}
                   to={item.path}
@@ -165,15 +180,30 @@ const Navbar = () => {
                   <span className="ml-3">{item.name}</span>
                 </Link>
               ))}
-              {!user && !loading && (
-                <Link
-                  to="/login"
-                  className="px-4 py-3 mt-2 rounded-md flex items-center border border-fitmentor-cream/20 text-fitmentor-cream hover:bg-fitmentor-cream/5"
+              
+              {!loading && !user ? (
+                <div className="flex flex-col gap-2 mt-4">
+                  <Link to="/login" className="w-full">
+                    <Button className="secondary-button w-full">
+                      <LogIn size={18} className="mr-2" />
+                      Login
+                    </Button>
+                  </Link>
+                  <Link to="/register" className="w-full">
+                    <Button className="premium-button w-full">
+                      Sign Up
+                    </Button>
+                  </Link>
+                </div>
+              ) : !loading && user ? (
+                <Button 
+                  variant="ghost" 
+                  onClick={signOut}
+                  className="mt-4 text-fitmentor-cream hover:text-fitmentor-cream/80 hover:bg-fitmentor-cream/10"
                 >
-                  <LogIn size={18} className="mr-2" />
-                  Login
-                </Link>
-              )}
+                  Log Out
+                </Button>
+              ) : null}
             </nav>
           </div>
         )}

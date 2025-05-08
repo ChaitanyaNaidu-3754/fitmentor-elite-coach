@@ -4,8 +4,11 @@ import Footer from "@/components/layout/Footer";
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
 import { Check, ArrowRight, Camera, Activity, Target, Brain } from "lucide-react";
+import { useAuth } from "@/hooks/use-auth";
 
 const Index = () => {
+  const { user, loading } = useAuth();
+  
   return (
     <>
       <Navbar />
@@ -28,17 +31,30 @@ const Index = () => {
             </p>
             
             <div className="flex flex-col sm:flex-row gap-4">
-              <Link to="/register">
-                <Button className="premium-button text-lg px-8 py-6">
-                  Get Started
-                  <ArrowRight size={18} className="ml-2" />
-                </Button>
-              </Link>
-              <Link to="/workouts">
-                <Button variant="outline" className="text-lg px-8 py-6 border-fitmentor-cream/30 text-fitmentor-cream hover:bg-fitmentor-cream hover:text-fitmentor-black">
-                  Explore Workouts
-                </Button>
-              </Link>
+              {loading ? (
+                <div className="animate-pulse">Loading...</div>
+              ) : user ? (
+                <Link to="/dashboard">
+                  <Button className="premium-button text-lg px-8 py-6">
+                    Go to Dashboard
+                    <ArrowRight size={18} className="ml-2" />
+                  </Button>
+                </Link>
+              ) : (
+                <>
+                  <Link to="/register">
+                    <Button className="premium-button text-lg px-8 py-6">
+                      Sign Up Free
+                      <ArrowRight size={18} className="ml-2" />
+                    </Button>
+                  </Link>
+                  <Link to="/login">
+                    <Button variant="outline" className="text-lg px-8 py-6 border-fitmentor-cream/30 text-fitmentor-cream hover:bg-fitmentor-cream hover:text-fitmentor-black">
+                      Login
+                    </Button>
+                  </Link>
+                </>
+              )}
             </div>
             
             <div className="mt-10 grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -131,16 +147,28 @@ const Index = () => {
               Join FitMentor today and experience the future of fitness coaching with our AI-powered platform.
             </p>
             <div className="flex flex-col sm:flex-row justify-center gap-4">
-              <Link to="/register">
-                <Button className="premium-button text-lg px-8 py-6">
-                  Start Free Trial
-                </Button>
-              </Link>
-              <Link to="/workouts">
-                <Button variant="outline" className="text-lg px-8 py-6 border-fitmentor-cream/30 text-fitmentor-cream hover:bg-fitmentor-cream hover:text-fitmentor-black">
-                  Explore Workouts
-                </Button>
-              </Link>
+              {loading ? (
+                <div className="animate-pulse">Loading...</div>
+              ) : user ? (
+                <Link to="/dashboard">
+                  <Button className="premium-button text-lg px-8 py-6">
+                    Go to Dashboard
+                  </Button>
+                </Link>
+              ) : (
+                <>
+                  <Link to="/register">
+                    <Button className="premium-button text-lg px-8 py-6">
+                      Start Free Trial
+                    </Button>
+                  </Link>
+                  <Link to="/login">
+                    <Button variant="outline" className="text-lg px-8 py-6 border-fitmentor-cream/30 text-fitmentor-cream hover:bg-fitmentor-cream hover:text-fitmentor-black">
+                      Login
+                    </Button>
+                  </Link>
+                </>
+              )}
             </div>
           </div>
         </div>

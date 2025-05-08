@@ -2,7 +2,7 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useLocation } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -12,6 +12,8 @@ const LoginForm = () => {
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
   const navigate = useNavigate();
+  const location = useLocation();
+  const from = location.state?.from || "/dashboard";
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -30,7 +32,8 @@ const LoginForm = () => {
         description: "You've successfully logged in.",
       });
       
-      navigate("/dashboard");
+      // Redirect to the page user was trying to access, or dashboard if none
+      navigate(from, { replace: true });
     } catch (error: any) {
       toast({
         title: "Login failed",
@@ -48,6 +51,14 @@ const LoginForm = () => {
         <h2 className="text-2xl font-bold text-fitmentor-cream">Welcome back</h2>
         <p className="text-fitmentor-medium-gray mt-2">Log in to your FitMentor account</p>
       </div>
+      
+      {from !== "/dashboard" && (
+        <div className="mb-6 p-3 border border-fitmentor-cream/20 rounded-md bg-fitmentor-cream/5">
+          <p className="text-sm text-fitmentor-cream">
+            You need to login to access that page
+          </p>
+        </div>
+      )}
       
       <form onSubmit={handleSubmit} className="space-y-6">
         <div className="space-y-2">
