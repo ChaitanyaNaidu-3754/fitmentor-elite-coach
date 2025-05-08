@@ -1,14 +1,18 @@
+
 import { useState, useEffect, useRef } from "react";
 import Navbar from "@/components/layout/Navbar";
 import { Button } from "@/components/ui/button";
-import { Progress } from "@/components/ui/progress";
-import { useToast } from "@/hooks/use-toast";
-import { Play, Pause, RotateCcw, X, CheckCircle2, Camera, CameraOff } from "lucide-react";
+import { X } from "lucide-react";
 import { Link, useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 import LoadingState from "@/components/workouts/detail/LoadingState";
 import { useWorkoutDetail } from "@/hooks/useWorkoutDetail";
+import { useToast } from "@/hooks/use-toast";
+import CameraView from "@/components/workouts/live/CameraView";
+import WorkoutControls from "@/components/workouts/live/WorkoutControls";
+import WorkoutStats from "@/components/workouts/live/WorkoutStats";
+import WorkoutComplete from "@/components/workouts/live/WorkoutComplete";
 
 const LiveWorkout = () => {
   const { id } = useParams();
@@ -27,8 +31,6 @@ const LiveWorkout = () => {
   const { toast } = useToast();
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const requestAnimationFrameRef = useRef<number | null>(null);
   
   // Improved camera initialization function
   const startStopCamera = async () => {
@@ -74,12 +76,6 @@ const LiveWorkout = () => {
               title: "Camera activated",
               description: "Your form will be analyzed in real-time",
             });
-            
-            // Start motion detection once camera is active
-            if (canvasRef.current) {
-              console.log("Starting motion detection...");
-              startMotionDetection();
-            }
           } else {
             console.error("Video reference still not available after timeout");
             toast({
@@ -99,7 +95,6 @@ const LiveWorkout = () => {
         });
       }
     } else {
-      stopMotionDetection();
       if (streamRef.current) {
         streamRef.current.getTracks().forEach(track => track.stop());
         streamRef.current = null;
@@ -114,92 +109,6 @@ const LiveWorkout = () => {
         });
       }
     }
-  };
-
-  // Motion detection logic
-  const startMotionDetection = () => {
-    if (!videoRef.current || !canvasRef.current) {
-      console.error("Video or canvas reference not available");
-      return;
-    }
-    
-    const video = videoRef.current;
-    const canvas = canvasRef.current;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) {
-      console.error("Could not get canvas context");
-      return;
-    }
-    
-    console.log("Motion detection initialized with video dimensions:", 
-      video.videoWidth || 640, "x", video.videoHeight || 480);
-    
-    // Set canvas dimensions
-    canvas.width = video.videoWidth || 640;
-    canvas.height = video.videoHeight || 480;
-    
-    let previousImageData: ImageData | null = null;
-    
-    const detect = () => {
-      if (!video.videoWidth) {
-        console.log("Waiting for video dimensions...");
-        requestAnimationFrameRef.current = requestAnimationFrame(detect);
-        return;
-      }
-      
-      // Draw current frame to canvas
-      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-      
-      // Get image data
-      const currentImageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-      
-      // Compare with previous frame if we have one
-      if (previousImageData && isWorkoutActive && !isPaused) {
-        const movement = detectMovement(previousImageData, currentImageData);
-        
-        if (movement > 20) { // Threshold for significant movement
-          console.log(`Movement detected: ${movement} - incrementing rep count`);
-          // When significant movement is detected, increment rep count
-          if (timeElapsed % 2 === 0) { // Limit the rep counting rate
-            if (currentRep < (workoutData?.exercises[currentExercise]?.repsPerSet || 10)) {
-              setCurrentRep(prevRep => prevRep + 1);
-            }
-          }
-        }
-      }
-      
-      previousImageData = currentImageData;
-      requestAnimationFrameRef.current = requestAnimationFrame(detect);
-    };
-    
-    requestAnimationFrameRef.current = requestAnimationFrame(detect);
-  };
-  
-  const stopMotionDetection = () => {
-    if (requestAnimationFrameRef.current) {
-      cancelAnimationFrame(requestAnimationFrameRef.current);
-      requestAnimationFrameRef.current = null;
-    }
-  };
-  
-  // Helper function to detect movement between frames
-  const detectMovement = (prev: ImageData, curr: ImageData): number => {
-    const prevData = prev.data;
-    const currData = curr.data;
-    let movement = 0;
-    
-    // Compare pixels (sample every 10th pixel to improve performance)
-    for (let i = 0; i < prevData.length; i += 40) {
-      const rDiff = Math.abs(prevData[i] - currData[i]);
-      const gDiff = Math.abs(prevData[i+1] - currData[i+1]);
-      const bDiff = Math.abs(prevData[i+2] - currData[i+2]);
-      
-      if (rDiff + gDiff + bDiff > 100) { // Threshold for pixel change
-        movement++;
-      }
-    }
-    
-    return movement;
   };
 
   const startWorkout = async () => {
@@ -252,6 +161,38 @@ const LiveWorkout = () => {
     setCurrentRep(0);
     setTimeElapsed(0);
     setCaloriesBurned(0);
+    setWorkoutComplete(false);
+  };
+
+  // Handle rep detection from motion detector
+  const handleRepDetected = () => {
+    if (isWorkoutActive && !isPaused && currentRep < (workoutData?.exercises[currentExercise]?.repsPerSet || 10)) {
+      setCurrentRep(prev => prev + 1);
+      
+      // Show toast on every 5th rep
+      if ((currentRep + 1) % 5 === 0 || (currentRep + 1) === workoutData?.exercises[currentExercise]?.repsPerSet) {
+        toast({
+          title: "Great form!",
+          description: `${currentRep + 1} of ${workoutData?.exercises[currentExercise]?.repsPerSet} reps completed`,
+        });
+      }
+    }
+  };
+
+  // Manual next exercise function
+  const goToNextExercise = () => {
+    if (currentExercise < (workoutData?.exercises?.length || 0) - 1) {
+      setCurrentExercise(prev => prev + 1);
+      setCurrentRep(0);
+      
+      toast({
+        title: `Next exercise: ${workoutData?.exercises[currentExercise + 1]?.name || 'Unknown'}`,
+        description: `Get ready!`,
+      });
+    } else {
+      // Last exercise complete
+      completeWorkout();
+    }
   };
 
   // Complete workout function
@@ -275,7 +216,7 @@ const LiveWorkout = () => {
           .from('user_stats')
           .select('*')
           .eq('user_id', user.id)
-          .single();
+          .maybeSingle();
           
         if (statsError && statsError.code !== 'PGRST116') {
           throw statsError;
@@ -337,18 +278,20 @@ const LiveWorkout = () => {
     setWorkoutComplete(true);
     
     // Stop camera when workout completes
-    if (cameraActive) {
-      stopMotionDetection();
-      if (streamRef.current) {
-        streamRef.current.getTracks().forEach(track => track.stop());
-        streamRef.current = null;
-        
-        if (videoRef.current) {
-          videoRef.current.srcObject = null;
-        }
-        setCameraActive(false);
+    if (cameraActive && streamRef.current) {
+      streamRef.current.getTracks().forEach(track => track.stop());
+      streamRef.current = null;
+      
+      if (videoRef.current) {
+        videoRef.current.srcObject = null;
       }
+      setCameraActive(false);
     }
+    
+    toast({
+      title: "Workout Complete! 🎉",
+      description: "Great job! You've completed your workout.",
+    });
   };
 
   useEffect(() => {
@@ -360,18 +303,24 @@ const LiveWorkout = () => {
         setTimeElapsed(prev => prev + 1);
         
         // Update calories (simplified calculation)
-        setCaloriesBurned(prev => Math.min(prev + 0.15, 999));
-        
-        // If not using motion detection for reps or as a fallback 
-        if (!cameraActive || !canvasRef.current) {
-          // Simulate rep counting
-          if (currentRep < (workoutData?.exercises[currentExercise]?.repsPerSet || 10)) {
-            // Every 3 seconds, increment rep for visual demonstration
-            if (timeElapsed % 3 === 0) {
-              setCurrentRep(prev => prev + 1);
+        setCaloriesBurned(prev => {
+          // Base calorie burn rate - could be more sophisticated based on exercise type
+          const baseRate = 0.15;
+          // Increase rate for higher intensity exercises
+          const exercise = workoutData?.exercises[currentExercise];
+          let intensityMultiplier = 1.0;
+          
+          if (exercise?.muscleGroups) {
+            if (exercise.muscleGroups.some(g => g.toLowerCase().includes('leg'))) {
+              intensityMultiplier = 1.5; // Leg exercises burn more calories
+            } else if (exercise.muscleGroups.some(g => g.toLowerCase().includes('chest') || 
+                                                      g.toLowerCase().includes('back'))) {
+              intensityMultiplier = 1.3; // Large muscle groups
             }
           }
-        }
+          
+          return Math.min(prev + (baseRate * intensityMultiplier), 999);
+        });
         
         // Check if current exercise is complete
         if (currentRep >= (workoutData?.exercises[currentExercise]?.repsPerSet || 10)) {
@@ -387,11 +336,6 @@ const LiveWorkout = () => {
           } else {
             // Workout complete
             completeWorkout();
-            
-            toast({
-              title: "Workout Complete! 🎉",
-              description: "Great job! You've completed your workout.",
-            });
           }
         }
       }, 1000);
@@ -405,35 +349,17 @@ const LiveWorkout = () => {
     isPaused, 
     currentExercise, 
     currentRep, 
-    timeElapsed, 
-    workoutData, 
-    toast,
-    cameraActive
+    workoutData
   ]);
 
   // Clean up camera on unmount
   useEffect(() => {
     return () => {
-      stopMotionDetection();
       if (streamRef.current) {
         streamRef.current.getTracks().forEach(track => track.stop());
       }
     };
   }, []);
-
-  // Format time from seconds to MM:SS
-  function formatTime(seconds: number) {
-    const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
-  }
-
-  // Calculate progress percentage for current exercise
-  function calculateProgress() {
-    if (!isWorkoutActive) return 0;
-    const currentExerciseReps = workoutData?.exercises[currentExercise]?.repsPerSet || 10;
-    return Math.floor((currentRep / currentExerciseReps) * 100);
-  }
 
   if (workoutLoading) {
     return (
@@ -451,37 +377,11 @@ const LiveWorkout = () => {
       <Navbar />
       <div className="container mx-auto px-6 pt-28 pb-12 min-h-screen flex flex-col">
         {workoutComplete ? (
-          <div className="flex-grow flex items-center justify-center">
-            <div className="glass-card p-10 max-w-lg w-full text-center animate-fade-in">
-              <div className="inline-flex items-center justify-center p-4 rounded-full bg-fitmentor-cream/20 mb-6">
-                <CheckCircle2 size={48} className="text-fitmentor-cream" />
-              </div>
-              <h2 className="text-3xl font-bold text-fitmentor-cream mb-4">Workout Complete!</h2>
-              <p className="text-fitmentor-medium-gray mb-6">You've successfully completed your workout session.</p>
-              
-              <div className="grid grid-cols-2 gap-6 mb-8">
-                <div className="glass-card p-4">
-                  <p className="text-sm text-fitmentor-medium-gray">Duration</p>
-                  <p className="text-2xl font-bold text-fitmentor-cream">{formatTime(timeElapsed)}</p>
-                </div>
-                <div className="glass-card p-4">
-                  <p className="text-sm text-fitmentor-medium-gray">Calories</p>
-                  <p className="text-2xl font-bold text-fitmentor-cream">{Math.floor(caloriesBurned)}</p>
-                </div>
-              </div>
-              
-              <div className="space-y-4">
-                <Link to="/dashboard">
-                  <Button className="premium-button w-full">
-                    Back to Dashboard
-                  </Button>
-                </Link>
-                <Button variant="outline" onClick={resetWorkout} className="w-full border-fitmentor-cream/30 text-fitmentor-cream hover:bg-fitmentor-cream hover:text-fitmentor-black">
-                  Start Another Workout
-                </Button>
-              </div>
-            </div>
-          </div>
+          <WorkoutComplete 
+            timeElapsed={timeElapsed}
+            caloriesBurned={caloriesBurned}
+            handleResetWorkout={resetWorkout}
+          />
         ) : (
           <>
             <div className="flex flex-col md:flex-row items-start md:items-center justify-between mb-10">
@@ -503,174 +403,44 @@ const LiveWorkout = () => {
             </div>
             
             <div className="flex-grow grid grid-cols-1 lg:grid-cols-3 gap-8">
-              {/* Camera view area - Improved video rendering */}
+              {/* Camera view area with motion detection */}
               <div className="lg:col-span-2 glass-card overflow-hidden flex flex-col">
-                <div className="relative flex-grow bg-fitmentor-black flex items-center justify-center">
-                  {/* Hidden canvas for motion detection */}
-                  <canvas 
-                    ref={canvasRef} 
-                    className="hidden"
-                  ></canvas>
-                  
-                  {/* Video element - Always render but conditionally display */}
-                  <video
-                    ref={videoRef}
-                    autoPlay
-                    playsInline
-                    muted
-                    className={`h-full w-full object-cover ${cameraActive ? 'block' : 'hidden'}`}
-                    style={{ transform: 'scaleX(-1)', minHeight: '400px' }} // Mirror effect for better UX with min-height
-                  />
-                  
-                  {!cameraActive && (
-                    <div className="text-center p-10">
-                      <div className="inline-flex items-center justify-center p-4 rounded-full bg-fitmentor-dark-gray mb-4">
-                        <Camera size={32} className="text-fitmentor-cream" />
-                      </div>
-                      <h3 className="text-xl font-bold mb-2">Camera access required</h3>
-                      <p className="text-fitmentor-medium-gray mb-4">
-                        Enable your camera to get real-time form feedback and rep counting
-                      </p>
-                      <Button onClick={startStopCamera} className="secondary-button">
-                        Enable Camera
-                      </Button>
-                      
-                      {cameraPermission === false && (
-                        <div className="mt-4 p-3 border border-red-400 rounded bg-red-400/10">
-                          <p className="text-red-400 text-sm">
-                            Camera permission denied. Please check your browser settings and allow camera access.
-                          </p>
-                        </div>
-                      )}
-                    </div>
-                  )}
-                  
-                  {/* Overlay for exercise info when workout is active */}
-                  {isWorkoutActive && (
-                    <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-fitmentor-black to-transparent p-6">
-                      <h3 className="text-xl font-bold text-fitmentor-cream">
-                        {workoutData?.exercises[currentExercise]?.name || "Exercise"}
-                      </h3>
-                      <div className="flex items-center justify-between mt-2">
-                        <div>
-                          <p className="text-fitmentor-medium-gray text-sm">
-                            Rep {currentRep} of {workoutData?.exercises[currentExercise]?.repsPerSet || 10}
-                          </p>
-                        </div>
-                        <Progress value={calculateProgress()} className="w-1/2 h-2" />
-                      </div>
-                    </div>
-                  )}
-                </div>
+                <CameraView
+                  cameraActive={cameraActive}
+                  isWorkoutActive={isWorkoutActive}
+                  isPaused={isPaused}
+                  currentExercise={workoutData?.exercises[currentExercise]}
+                  currentRep={currentRep}
+                  videoRef={videoRef}
+                  cameraPermission={cameraPermission}
+                  startStopCamera={startStopCamera}
+                  onRepDetected={handleRepDetected}
+                />
                 
-                <div className="p-6 border-t border-fitmentor-cream/10 flex justify-between items-center">
-                  {!cameraActive ? (
-                    <Button 
-                      onClick={startStopCamera}
-                      className="premium-button"
-                    >
-                      <Camera size={16} className="mr-2" />
-                      Enable Camera
-                    </Button>
-                  ) : (
-                    <>
-                      {!isWorkoutActive ? (
-                        <Button 
-                          onClick={startWorkout}
-                          className="premium-button"
-                        >
-                          <Play size={16} className="mr-2" />
-                          Start Workout
-                        </Button>
-                      ) : (
-                        <div className="flex gap-3">
-                          <Button 
-                            onClick={() => setIsPaused(!isPaused)}
-                            variant="outline"
-                            className="border-fitmentor-cream/30 text-fitmentor-cream hover:bg-fitmentor-cream hover:text-fitmentor-black"
-                          >
-                            {isPaused ? (
-                              <>
-                                <Play size={16} className="mr-2" />
-                                Resume
-                              </>
-                            ) : (
-                              <>
-                                <Pause size={16} className="mr-2" />
-                                Pause
-                              </>
-                            )}
-                          </Button>
-                          <Button 
-                            onClick={resetWorkout}
-                            variant="outline"
-                            className="border-fitmentor-cream/30 text-fitmentor-cream hover:bg-fitmentor-cream hover:text-fitmentor-black"
-                          >
-                            <RotateCcw size={16} className="mr-2" />
-                            Reset
-                          </Button>
-                        </div>
-                      )}
-                      <Button 
-                        onClick={startStopCamera}
-                        variant="outline"
-                        className="border-fitmentor-cream/30 text-fitmentor-cream hover:bg-fitmentor-cream hover:text-fitmentor-black"
-                      >
-                        <CameraOff size={16} className="mr-2" />
-                        Disable Camera
-                      </Button>
-                    </>
-                  )}
-                </div>
+                <WorkoutControls 
+                  isWorkoutActive={isWorkoutActive}
+                  isPaused={isPaused}
+                  cameraActive={cameraActive}
+                  handleStartWorkout={startWorkout}
+                  handlePauseWorkout={pauseWorkout}
+                  handleResetWorkout={resetWorkout}
+                  handleCameraToggle={startStopCamera}
+                  handleNextExercise={goToNextExercise}
+                  handleCompleteWorkout={completeWorkout}
+                  isLastExercise={currentExercise === (workoutData?.exercises?.length || 0) - 1}
+                />
               </div>
               
               {/* Workout stats */}
-              <div className="glass-card p-6">
-                <h2 className="text-xl font-bold mb-4">Workout Stats</h2>
-                
-                <div className="space-y-6">
-                  <div>
-                    <p className="text-sm text-fitmentor-medium-gray mb-1">Time Elapsed</p>
-                    <p className="text-3xl font-bold text-fitmentor-cream">{formatTime(timeElapsed)}</p>
-                  </div>
-                  
-                  <div>
-                    <p className="text-sm text-fitmentor-medium-gray mb-1">Calories Burned</p>
-                    <p className="text-3xl font-bold text-fitmentor-cream">{Math.floor(caloriesBurned)}</p>
-                  </div>
-                  
-                  <div>
-                    <p className="text-sm text-fitmentor-medium-gray mb-1">Current Exercise</p>
-                    <p className="text-xl font-bold text-fitmentor-cream">
-                      {isWorkoutActive 
-                        ? workoutData?.exercises[currentExercise]?.name || "Exercise"
-                        : "Not started"
-                      }
-                    </p>
-                  </div>
-                  
-                  <div>
-                    <p className="text-sm text-fitmentor-medium-gray mb-2">Exercise Progress</p>
-                    <Progress value={calculateProgress()} className="h-2 mb-1" />
-                    <div className="flex justify-between text-xs text-fitmentor-medium-gray">
-                      <span>{currentRep} reps</span>
-                      <span>{workoutData?.exercises[currentExercise]?.repsPerSet || 10} reps</span>
-                    </div>
-                  </div>
-                  
-                  <div>
-                    <p className="text-sm text-fitmentor-medium-gray mb-2">Workout Progress</p>
-                    <Progress 
-                      value={Math.floor(((currentExercise) / (workoutData?.exercises?.length || 1)) * 100)} 
-                      className="h-2 mb-1" 
-                    />
-                    <div className="flex justify-between text-xs text-fitmentor-medium-gray">
-                      <span>Exercise {currentExercise + 1}</span>
-                      <span>{workoutData?.exercises?.length || 0} total</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
+              <WorkoutStats 
+                timeElapsed={timeElapsed}
+                caloriesBurned={caloriesBurned}
+                currentExercise={currentExercise}
+                currentRep={currentRep}
+                totalExercises={workoutData?.exercises?.length || 0}
+                exercise={workoutData?.exercises[currentExercise]}
+                isWorkoutActive={isWorkoutActive}
+              />
             </div>
           </>
         )}

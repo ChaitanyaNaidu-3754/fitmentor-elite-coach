@@ -30,6 +30,18 @@ const getExerciseImage = (exercise: { imageUrl: string | null, muscleGroups: str
   return defaultExerciseImages.default;
 };
 
+// Get start and end position images for form analysis
+export const getFormImages = (exercise: { name: string, muscleGroups: string[] }): { start: string, end: string } => {
+  // These would normally come from an API or the GitHub repo mentioned
+  // For now we'll simulate with muscle group based defaults
+  const baseImage = getExerciseImage({ imageUrl: null, muscleGroups: exercise.muscleGroups });
+  
+  return {
+    start: baseImage, // In a real implementation, these would be specific start/end images
+    end: baseImage    // from the exercise database
+  };
+};
+
 interface ExerciseProps {
   index: number;
   exercise: {
