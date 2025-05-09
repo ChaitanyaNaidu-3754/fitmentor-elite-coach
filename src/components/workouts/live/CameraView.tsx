@@ -1,9 +1,10 @@
 
-import { useRef } from "react";
+import { useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Camera } from "lucide-react";
 import MotionDetector from "./MotionDetector";
 import ExerciseOverlay from "./ExerciseOverlay";
+import PoseDetectionOverlay from "./PoseDetectionOverlay";
 
 interface CameraViewProps {
   cameraActive: boolean;
@@ -28,6 +29,9 @@ const CameraView = ({
   startStopCamera,
   onRepDetected
 }: CameraViewProps) => {
+  // Store detected pose data
+  const [detectedPose, setDetectedPose] = useState<any>(null);
+
   return (
     <div className="relative flex-grow bg-fitmentor-black flex items-center justify-center">
       {/* Video element - Always render but conditionally display */}
@@ -48,6 +52,17 @@ const CameraView = ({
           isPaused={isPaused}
           currentExercise={currentExercise}
           onRepDetected={onRepDetected}
+          onPoseDetected={setDetectedPose}
+        />
+      )}
+
+      {/* Pose Detection Overlay */}
+      {cameraActive && (
+        <PoseDetectionOverlay
+          videoRef={videoRef}
+          isActive={isWorkoutActive}
+          isPaused={isPaused}
+          detectedPose={detectedPose}
         />
       )}
 
