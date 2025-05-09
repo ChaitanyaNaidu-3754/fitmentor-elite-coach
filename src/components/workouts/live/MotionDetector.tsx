@@ -1,18 +1,6 @@
+
 import { useRef, useEffect, useState } from "react";
 import { getFormImages } from "@/components/workouts/detail/ExerciseCard";
-
-interface Joint {
-  x: number;
-  y: number;
-  confidence: number;
-}
-
-interface Pose {
-  keypoints: {
-    [key: string]: Joint;
-  };
-  score: number;
-}
 
 interface MotionDetectorProps {
   videoRef: React.RefObject<HTMLVideoElement>;
@@ -20,7 +8,6 @@ interface MotionDetectorProps {
   isPaused: boolean;
   currentExercise: any;
   onRepDetected: () => void;
-  onPoseDetected: (pose: Pose | null) => void;
 }
 
 const MotionDetector = ({ 
@@ -28,8 +15,7 @@ const MotionDetector = ({
   isActive, 
   isPaused, 
   currentExercise,
-  onRepDetected,
-  onPoseDetected
+  onRepDetected 
 }: MotionDetectorProps) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const requestAnimationFrameRef = useRef<number | null>(null);
@@ -38,7 +24,6 @@ const MotionDetector = ({
   const motionThresholdRef = useRef<number>(0);
   const consecutiveFramesAboveThresholdRef = useRef<number>(0);
   const lastRepTimeRef = useRef<number>(0);
-  const [detectedPose, setDetectedPose] = useState<Pose | null>(null);
   const [debugInfo, setDebugInfo] = useState<{ movement: number, threshold: number, state: string }>({
     movement: 0,
     threshold: 0,
@@ -54,12 +39,12 @@ const MotionDetector = ({
       
       // Dynamically set threshold based on exercise type
       // In a real implementation, this would be more sophisticated
-      if (currentExercise.muscleGroups && currentExercise.muscleGroups.some(
+      if (currentExercise.muscleGroups.some(
         (group: string) => group.toLowerCase().includes('leg') || 
                           group.toLowerCase().includes('squat'))
       ) {
         motionThresholdRef.current = 25; // Higher threshold for large movements
-      } else if (currentExercise.muscleGroups && currentExercise.muscleGroups.some(
+      } else if (currentExercise.muscleGroups.some(
         (group: string) => group.toLowerCase().includes('arm') || 
                           group.toLowerCase().includes('bicep'))
       ) {
@@ -70,50 +55,6 @@ const MotionDetector = ({
     }
   }, [currentExercise]);
 
-  // Simulated pose detection - In a production app, this would use a real pose detection model
-  const simulatePoseDetection = (imageData: ImageData): Pose | null => {
-    if (!videoRef.current) return null;
-    
-    const video = videoRef.current;
-    const width = video.videoWidth || video.offsetWidth;
-    const height = video.videoHeight || video.offsetHeight;
-    
-    // Create a simulated pose based on motion detection
-    // This is a placeholder - in reality, you would use a pose detection model like PoseNet, BlazePose, etc.
-    const centerX = width / 2;
-    const centerY = height / 2;
-    
-    // Generate some random movement for demo purposes
-    const noise = (pos: number) => pos + (Math.random() * 5 - 2.5);
-    const confidence = () => Math.random() * 0.3 + 0.7; // High confidence for demo
-    
-    const pose: Pose = {
-      keypoints: {
-        nose: { x: noise(centerX), y: noise(centerY - height * 0.25), confidence: confidence() },
-        neck: { x: noise(centerX), y: noise(centerY - height * 0.15), confidence: confidence() },
-        leftEye: { x: noise(centerX - width * 0.05), y: noise(centerY - height * 0.26), confidence: confidence() },
-        rightEye: { x: noise(centerX + width * 0.05), y: noise(centerY - height * 0.26), confidence: confidence() },
-        leftEar: { x: noise(centerX - width * 0.08), y: noise(centerY - height * 0.23), confidence: confidence() },
-        rightEar: { x: noise(centerX + width * 0.08), y: noise(centerY - height * 0.23), confidence: confidence() },
-        leftShoulder: { x: noise(centerX - width * 0.15), y: noise(centerY - height * 0.10), confidence: confidence() },
-        rightShoulder: { x: noise(centerX + width * 0.15), y: noise(centerY - height * 0.10), confidence: confidence() },
-        leftElbow: { x: noise(centerX - width * 0.20), y: noise(centerY), confidence: confidence() },
-        rightElbow: { x: noise(centerX + width * 0.20), y: noise(centerY), confidence: confidence() },
-        leftWrist: { x: noise(centerX - width * 0.25), y: noise(centerY + height * 0.10), confidence: confidence() },
-        rightWrist: { x: noise(centerX + width * 0.25), y: noise(centerY + height * 0.10), confidence: confidence() },
-        leftHip: { x: noise(centerX - width * 0.10), y: noise(centerY + height * 0.15), confidence: confidence() },
-        rightHip: { x: noise(centerX + width * 0.10), y: noise(centerY + height * 0.15), confidence: confidence() },
-        leftKnee: { x: noise(centerX - width * 0.10), y: noise(centerY + height * 0.30), confidence: confidence() },
-        rightKnee: { x: noise(centerX + width * 0.10), y: noise(centerY + height * 0.30), confidence: confidence() },
-        leftAnkle: { x: noise(centerX - width * 0.10), y: noise(centerY + height * 0.45), confidence: confidence() },
-        rightAnkle: { x: noise(centerX + width * 0.10), y: noise(centerY + height * 0.45), confidence: confidence() },
-      },
-      score: 0.9
-    };
-    
-    return pose;
-  };
-
   // Set up motion detection
   useEffect(() => {
     if (!isActive || isPaused || !videoRef.current || !canvasRef.current) {
@@ -121,10 +62,6 @@ const MotionDetector = ({
         cancelAnimationFrame(requestAnimationFrameRef.current);
         requestAnimationFrameRef.current = null;
       }
-      
-      // Clear pose data when inactive
-      setDetectedPose(null);
-      onPoseDetected(null);
       return;
     }
 
@@ -165,11 +102,6 @@ const MotionDetector = ({
       
       // Get image data
       const currentImageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-      
-      // Detect pose (simulated in this implementation)
-      const pose = simulatePoseDetection(currentImageData);
-      setDetectedPose(pose);
-      onPoseDetected(pose);
       
       // Compare with previous frame if we have one
       if (previousImageDataRef.current) {
@@ -234,7 +166,7 @@ const MotionDetector = ({
         requestAnimationFrameRef.current = null;
       }
     };
-  }, [isActive, isPaused, videoRef, onRepDetected, onPoseDetected]);
+  }, [isActive, isPaused, videoRef, onRepDetected]);
   
   // Helper function to detect movement between frames
   const detectMovement = (prev: ImageData, curr: ImageData): number => {
