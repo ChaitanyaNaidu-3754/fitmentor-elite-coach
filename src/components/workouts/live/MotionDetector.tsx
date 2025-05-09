@@ -1,3 +1,4 @@
+
 import { useRef, useEffect, useState } from "react";
 import { getFormImages } from "@/components/workouts/detail/ExerciseCard";
 
@@ -33,88 +34,139 @@ const MotionDetector = ({
 }: MotionDetectorProps) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const requestAnimationFrameRef = useRef<number | null>(null);
-  const previousImageDataRef = useRef<ImageData | null>(null);
-  const motionStateRef = useRef<'idle' | 'moving' | 'rep-detected'>('idle');
-  const motionThresholdRef = useRef<number>(0);
-  const consecutiveFramesAboveThresholdRef = useRef<number>(0);
+  const previousPoseRef = useRef<Pose | null>(null);
+  const motionStateRef = useRef<'start' | 'mid' | 'end'>('start');
+  const repProgressRef = useRef<number>(0);
   const lastRepTimeRef = useRef<number>(0);
-  const [detectedPose, setDetectedPose] = useState<Pose | null>(null);
-  const [debugInfo, setDebugInfo] = useState<{ movement: number, threshold: number, state: string }>({
-    movement: 0,
-    threshold: 0,
-    state: 'idle'
+  const exerciseTemplateRef = useRef<{start: Pose | null, end: Pose | null}>({
+    start: null,
+    end: null
+  });
+  const [debugInfo, setDebugInfo] = useState<{ 
+    progress: number, 
+    similarity: number, 
+    state: string 
+  }>({
+    progress: 0,
+    similarity: 0,
+    state: 'start'
   });
 
-  // Initialize form analysis by getting reference images
+  // Initialize form analysis by getting reference images and templates
   useEffect(() => {
     if (currentExercise) {
-      // In a production app, we would load the start/end position images for the current exercise
-      // For now, we'll use a simulated approach based on the exercise properties
-      const formImages = getFormImages(currentExercise);
+      console.log("Loading exercise template for:", currentExercise.name);
       
-      // Dynamically set threshold based on exercise type
-      // In a real implementation, this would be more sophisticated
-      if (currentExercise.muscleGroups && currentExercise.muscleGroups.some(
-        (group: string) => group.toLowerCase().includes('leg') || 
-                          group.toLowerCase().includes('squat'))
-      ) {
-        motionThresholdRef.current = 25; // Higher threshold for large movements
-      } else if (currentExercise.muscleGroups && currentExercise.muscleGroups.some(
-        (group: string) => group.toLowerCase().includes('arm') || 
-                          group.toLowerCase().includes('bicep'))
-      ) {
-        motionThresholdRef.current = 15; // Medium threshold for arm exercises
-      } else {
-        motionThresholdRef.current = 20; // Default threshold
-      }
+      // In a production app, we would load actual pose data from the GitHub repo
+      // For now, we'll create simulated templates based on the exercise
+      
+      // Get form images paths (these would be used to extract pose data in production)
+      const formImages = getFormImages(currentExercise);
+      console.log("Form images:", formImages);
+      
+      // Create simulated start and end pose templates based on exercise type
+      const startPose = createExerciseTemplate(currentExercise, 'start');
+      const endPose = createExerciseTemplate(currentExercise, 'end');
+      
+      exerciseTemplateRef.current = {
+        start: startPose,
+        end: endPose
+      };
+      
+      console.log("Exercise templates created");
     }
   }, [currentExercise]);
 
-  // Simulated pose detection - In a production app, this would use a real pose detection model
-  const simulatePoseDetection = (imageData: ImageData): Pose | null => {
-    if (!videoRef.current) return null;
+  // Helper function to create exercise-specific pose templates
+  const createExerciseTemplate = (exercise: any, position: 'start' | 'end'): Pose => {
+    // This is a simplified simulation - in production, this would extract real pose data from images
+    const isLegExercise = exercise.muscleGroups && 
+      exercise.muscleGroups.some((g: string) => 
+        g.toLowerCase().includes('leg') || 
+        g.toLowerCase().includes('squat')
+      );
+      
+    const isArmExercise = exercise.muscleGroups && 
+      exercise.muscleGroups.some((g: string) => 
+        g.toLowerCase().includes('arm') || 
+        g.toLowerCase().includes('bicep') ||
+        g.toLowerCase().includes('tricep')
+      );
+      
+    const isChestExercise = exercise.muscleGroups && 
+      exercise.muscleGroups.some((g: string) => 
+        g.toLowerCase().includes('chest') || 
+        g.toLowerCase().includes('pectoral')
+      );
     
-    const video = videoRef.current;
-    const width = video.videoWidth || video.offsetWidth;
-    const height = video.videoHeight || video.offsetHeight;
-    
-    // Create a simulated pose based on motion detection
-    // This is a placeholder - in reality, you would use a pose detection model like PoseNet, BlazePose, etc.
-    const centerX = width / 2;
-    const centerY = height / 2;
-    
-    // Generate some random movement for demo purposes
-    const noise = (pos: number) => pos + (Math.random() * 5 - 2.5);
-    const confidence = () => Math.random() * 0.3 + 0.7; // High confidence for demo
-    
-    const pose: Pose = {
+    // Define a base pose
+    const basePose: Pose = {
       keypoints: {
-        nose: { x: noise(centerX), y: noise(centerY - height * 0.25), confidence: confidence() },
-        neck: { x: noise(centerX), y: noise(centerY - height * 0.15), confidence: confidence() },
-        leftEye: { x: noise(centerX - width * 0.05), y: noise(centerY - height * 0.26), confidence: confidence() },
-        rightEye: { x: noise(centerX + width * 0.05), y: noise(centerY - height * 0.26), confidence: confidence() },
-        leftEar: { x: noise(centerX - width * 0.08), y: noise(centerY - height * 0.23), confidence: confidence() },
-        rightEar: { x: noise(centerX + width * 0.08), y: noise(centerY - height * 0.23), confidence: confidence() },
-        leftShoulder: { x: noise(centerX - width * 0.15), y: noise(centerY - height * 0.10), confidence: confidence() },
-        rightShoulder: { x: noise(centerX + width * 0.15), y: noise(centerY - height * 0.10), confidence: confidence() },
-        leftElbow: { x: noise(centerX - width * 0.20), y: noise(centerY), confidence: confidence() },
-        rightElbow: { x: noise(centerX + width * 0.20), y: noise(centerY), confidence: confidence() },
-        leftWrist: { x: noise(centerX - width * 0.25), y: noise(centerY + height * 0.10), confidence: confidence() },
-        rightWrist: { x: noise(centerX + width * 0.25), y: noise(centerY + height * 0.10), confidence: confidence() },
-        leftHip: { x: noise(centerX - width * 0.10), y: noise(centerY + height * 0.15), confidence: confidence() },
-        rightHip: { x: noise(centerX + width * 0.10), y: noise(centerY + height * 0.15), confidence: confidence() },
-        leftKnee: { x: noise(centerX - width * 0.10), y: noise(centerY + height * 0.30), confidence: confidence() },
-        rightKnee: { x: noise(centerX + width * 0.10), y: noise(centerY + height * 0.30), confidence: confidence() },
-        leftAnkle: { x: noise(centerX - width * 0.10), y: noise(centerY + height * 0.45), confidence: confidence() },
-        rightAnkle: { x: noise(centerX + width * 0.10), y: noise(centerY + height * 0.45), confidence: confidence() },
+        nose: { x: 0.5, y: 0.2, confidence: 0.9 },
+        leftShoulder: { x: 0.4, y: 0.3, confidence: 0.9 },
+        rightShoulder: { x: 0.6, y: 0.3, confidence: 0.9 },
+        leftElbow: { x: 0.3, y: 0.4, confidence: 0.9 },
+        rightElbow: { x: 0.7, y: 0.4, confidence: 0.9 },
+        leftWrist: { x: 0.3, y: 0.5, confidence: 0.9 },
+        rightWrist: { x: 0.7, y: 0.5, confidence: 0.9 },
+        leftHip: { x: 0.45, y: 0.6, confidence: 0.9 },
+        rightHip: { x: 0.55, y: 0.6, confidence: 0.9 },
+        leftKnee: { x: 0.4, y: 0.75, confidence: 0.9 },
+        rightKnee: { x: 0.6, y: 0.75, confidence: 0.9 },
+        leftAnkle: { x: 0.4, y: 0.9, confidence: 0.9 },
+        rightAnkle: { x: 0.6, y: 0.9, confidence: 0.9 },
       },
       score: 0.9
     };
     
-    return pose;
+    // Modify the template based on exercise type and position
+    if (isLegExercise) {
+      // For leg exercises like squats
+      if (position === 'start') {
+        // Standing position
+        basePose.keypoints.leftKnee.y = 0.75;
+        basePose.keypoints.rightKnee.y = 0.75;
+      } else {
+        // Squat position
+        basePose.keypoints.leftKnee.y = 0.65;
+        basePose.keypoints.rightKnee.y = 0.65;
+        basePose.keypoints.leftHip.y = 0.5;
+        basePose.keypoints.rightHip.y = 0.5;
+      }
+    } else if (isArmExercise) {
+      // For arm exercises like bicep curls
+      if (position === 'start') {
+        // Arms down
+        basePose.keypoints.leftElbow.y = 0.45;
+        basePose.keypoints.rightElbow.y = 0.45;
+        basePose.keypoints.leftWrist.y = 0.6;
+        basePose.keypoints.rightWrist.y = 0.6;
+      } else {
+        // Arms up (curled)
+        basePose.keypoints.leftElbow.y = 0.4;
+        basePose.keypoints.rightElbow.y = 0.4;
+        basePose.keypoints.leftWrist.y = 0.3;
+        basePose.keypoints.rightWrist.y = 0.3;
+      }
+    } else if (isChestExercise) {
+      // For chest exercises like push-ups
+      if (position === 'start') {
+        // Top position
+        basePose.keypoints.leftElbow.y = 0.4;
+        basePose.keypoints.rightElbow.y = 0.4;
+      } else {
+        // Bottom position
+        basePose.keypoints.leftElbow.y = 0.35;
+        basePose.keypoints.rightElbow.y = 0.35;
+        basePose.keypoints.leftShoulder.y = 0.35;
+        basePose.keypoints.rightShoulder.y = 0.35;
+      }
+    }
+    
+    return basePose;
   };
 
-  // Set up motion detection
+  // Set up motion detection and pose analysis
   useEffect(() => {
     if (!isActive || isPaused || !videoRef.current || !canvasRef.current) {
       if (requestAnimationFrameRef.current) {
@@ -123,7 +175,6 @@ const MotionDetector = ({
       }
       
       // Clear pose data when inactive
-      setDetectedPose(null);
       onPoseDetected(null);
       return;
     }
@@ -148,7 +199,7 @@ const MotionDetector = ({
       }
     };
 
-    // Start motion detection
+    // Start motion detection and pose analysis
     const detect = () => {
       if (!video.videoWidth) {
         requestAnimationFrameRef.current = requestAnimationFrame(detect);
@@ -163,66 +214,21 @@ const MotionDetector = ({
       // Draw current frame to canvas
       ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
       
-      // Get image data
+      // Get image data for motion detection
       const currentImageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
       
-      // Detect pose (simulated in this implementation)
-      const pose = simulatePoseDetection(currentImageData);
-      setDetectedPose(pose);
-      onPoseDetected(pose);
+      // Detect pose - in production this would use a real pose detection model
+      const currentPose = detectPose(currentImageData, canvas.width, canvas.height);
       
-      // Compare with previous frame if we have one
-      if (previousImageDataRef.current) {
-        const movementScore = detectMovement(previousImageDataRef.current, currentImageData);
-        
-        const now = Date.now();
-        const timeSinceLastRep = now - lastRepTimeRef.current;
-        
-        // Update debug info
-        setDebugInfo({
-          movement: movementScore,
-          threshold: motionThresholdRef.current,
-          state: motionStateRef.current
-        });
-
-        // State machine for rep detection
-        switch(motionStateRef.current) {
-          case 'idle':
-            if (movementScore > motionThresholdRef.current) {
-              consecutiveFramesAboveThresholdRef.current++;
-              if (consecutiveFramesAboveThresholdRef.current >= 3) {
-                motionStateRef.current = 'moving';
-              }
-            } else {
-              consecutiveFramesAboveThresholdRef.current = 0;
-            }
-            break;
-            
-          case 'moving':
-            if (movementScore < motionThresholdRef.current / 2) {
-              // Movement stopped, could be a completed rep
-              if (timeSinceLastRep > 1000) { // Prevent counting reps too quickly
-                motionStateRef.current = 'rep-detected';
-                lastRepTimeRef.current = now;
-                
-                // Trigger the rep detected callback
-                onRepDetected();
-                
-                // Reset after a short delay
-                setTimeout(() => {
-                  motionStateRef.current = 'idle';
-                }, 500);
-              }
-            }
-            break;
-            
-          case 'rep-detected':
-            // Wait for the timeout to reset to idle
-            break;
-        }
+      // Update detected pose
+      onPoseDetected(currentPose);
+      
+      // Process the pose for rep counting if we have valid data
+      if (currentPose && exerciseTemplateRef.current.start && exerciseTemplateRef.current.end) {
+        processRepCounting(currentPose);
       }
       
-      previousImageDataRef.current = currentImageData;
+      previousPoseRef.current = currentPose;
       requestAnimationFrameRef.current = requestAnimationFrame(detect);
     };
     
@@ -234,37 +240,189 @@ const MotionDetector = ({
         requestAnimationFrameRef.current = null;
       }
     };
-  }, [isActive, isPaused, videoRef, onRepDetected, onPoseDetected]);
+  }, [isActive, isPaused, videoRef, onRepDetected, onPoseDetected, currentExercise]);
   
-  // Helper function to detect movement between frames
-  const detectMovement = (prev: ImageData, curr: ImageData): number => {
-    const prevData = prev.data;
-    const currData = curr.data;
-    let movement = 0;
+  // Simulated pose detection function - in production, use a real pose detection library
+  const detectPose = (imageData: ImageData, width: number, height: number): Pose => {
+    // Create a simulated pose based on templates and add some variance
+    // In production, this would be replaced with actual pose detection
     
-    // Sample pixels (every 10th pixel) to improve performance
-    for (let i = 0; i < prevData.length; i += 40) {
-      const rDiff = Math.abs(prevData[i] - currData[i]);
-      const gDiff = Math.abs(prevData[i+1] - currData[i+1]);
-      const bDiff = Math.abs(prevData[i+2] - currData[i+2]);
-      
-      if (rDiff + gDiff + bDiff > 100) { // Threshold for pixel change
-        movement++;
-      }
+    let templatePose: Pose | null = null;
+    
+    // Determine which template to use based on rep progress
+    if (repProgressRef.current < 0.5) {
+      // Closer to start pose
+      templatePose = exerciseTemplateRef.current.start;
+    } else {
+      // Closer to end pose
+      templatePose = exerciseTemplateRef.current.end;
     }
     
-    return movement;
+    // If no template available, create a default pose
+    if (!templatePose) {
+      templatePose = {
+        keypoints: {
+          nose: { x: 0.5, y: 0.2, confidence: 0.9 },
+          leftShoulder: { x: 0.4, y: 0.3, confidence: 0.9 },
+          rightShoulder: { x: 0.6, y: 0.3, confidence: 0.9 },
+          leftElbow: { x: 0.3, y: 0.4, confidence: 0.9 },
+          rightElbow: { x: 0.7, y: 0.4, confidence: 0.9 },
+          leftWrist: { x: 0.3, y: 0.5, confidence: 0.9 },
+          rightWrist: { x: 0.7, y: 0.5, confidence: 0.9 },
+          leftHip: { x: 0.45, y: 0.6, confidence: 0.9 },
+          rightHip: { x: 0.55, y: 0.6, confidence: 0.9 },
+          leftKnee: { x: 0.4, y: 0.75, confidence: 0.9 },
+          rightKnee: { x: 0.6, y: 0.75, confidence: 0.9 },
+          leftAnkle: { x: 0.4, y: 0.9, confidence: 0.9 },
+          rightAnkle: { x: 0.6, y: 0.9, confidence: 0.9 },
+        },
+        score: 0.9
+      };
+    }
+    
+    // Add some randomness to simulate real-world detection variance
+    const addNoise = (value: number): number => {
+      return value + (Math.random() * 0.05 - 0.025);
+    };
+    
+    // Create a new pose with some random variance
+    const simulatedPose: Pose = {
+      keypoints: {},
+      score: 0.9
+    };
+    
+    // Apply noise and convert normalized coordinates to pixel coordinates
+    Object.keys(templatePose.keypoints).forEach(key => {
+      const joint = templatePose!.keypoints[key];
+      
+      // Add noise to the normalized position
+      const noisyX = addNoise(joint.x);
+      const noisyY = addNoise(joint.y);
+      
+      // Convert normalized coordinates to pixel coordinates
+      simulatedPose.keypoints[key] = {
+        x: noisyX * width,
+        y: noisyY * height,
+        confidence: joint.confidence * (0.9 + Math.random() * 0.1)
+      };
+    });
+    
+    return simulatedPose;
+  };
+
+  // Process pose for rep counting using template matching
+  const processRepCounting = (currentPose: Pose) => {
+    const startTemplate = exerciseTemplateRef.current.start;
+    const endTemplate = exerciseTemplateRef.current.end;
+    
+    if (!startTemplate || !endTemplate) return;
+    
+    // Calculate similarity to start and end poses
+    const startSimilarity = calculatePoseSimilarity(currentPose, startTemplate);
+    const endSimilarity = calculatePoseSimilarity(currentPose, endTemplate);
+    
+    // Determine rep progress (0 = at start pose, 1 = at end pose)
+    // This is a simplified approximation for the demo
+    const totalSimilarity = startSimilarity + endSimilarity;
+    let progress = 0;
+    
+    if (totalSimilarity > 0) {
+      progress = endSimilarity / totalSimilarity;
+    }
+    
+    // Update rep progress
+    repProgressRef.current = progress;
+    
+    // Rep state machine
+    const now = Date.now();
+    const timeSinceLastRep = now - lastRepTimeRef.current;
+    
+    // Update debug info
+    setDebugInfo({
+      progress: progress,
+      similarity: Math.max(startSimilarity, endSimilarity),
+      state: motionStateRef.current
+    });
+
+    // State machine for rep detection
+    switch(motionStateRef.current) {
+      case 'start':
+        if (progress > 0.6) {
+          // Moving toward end position
+          motionStateRef.current = 'mid';
+        }
+        break;
+        
+      case 'mid':
+        if (progress > 0.85) {
+          // Reached end position
+          motionStateRef.current = 'end';
+        } else if (progress < 0.3) {
+          // Went back to start position without completing rep
+          motionStateRef.current = 'start';
+        }
+        break;
+        
+      case 'end':
+        if (progress < 0.3) {
+          // Returned to start position after reaching end position
+          // Complete rep if enough time has passed since last rep
+          if (timeSinceLastRep > 500) { // Prevent counting reps too quickly
+            lastRepTimeRef.current = now;
+            motionStateRef.current = 'start';
+            
+            // Trigger the rep detected callback
+            onRepDetected();
+            console.log("Rep detected!");
+          }
+        }
+        break;
+    }
+  };
+
+  // Calculate similarity between two poses
+  const calculatePoseSimilarity = (pose1: Pose, pose2: Pose): number => {
+    // This is a simplified similarity calculation for the demo
+    // In production, use a more sophisticated algorithm considering joint angles and relative positions
+    
+    let totalDistance = 0;
+    let jointCount = 0;
+    
+    // Calculate the total distance between corresponding joints
+    Object.keys(pose1.keypoints).forEach(key => {
+      if (pose2.keypoints[key]) {
+        // Normalize coordinates to 0-1 range for comparison
+        const x1 = pose1.keypoints[key].x / (canvasRef.current?.width || 1);
+        const y1 = pose1.keypoints[key].y / (canvasRef.current?.height || 1);
+        
+        const x2 = pose2.keypoints[key].x;
+        const y2 = pose2.keypoints[key].y;
+        
+        // Calculate Euclidean distance
+        const distance = Math.sqrt(Math.pow(x1 - x2, 2) + Math.pow(y1 - y2, 2));
+        totalDistance += distance;
+        jointCount++;
+      }
+    });
+    
+    // Calculate average distance (lower is more similar)
+    const avgDistance = jointCount > 0 ? totalDistance / jointCount : 1;
+    
+    // Convert to similarity score (higher is more similar)
+    const similarity = Math.max(0, 1 - avgDistance * 4);
+    
+    return similarity;
   };
 
   return (
     <>
       <canvas ref={canvasRef} className="hidden" />
       
-      {/* Optionally render debug info for development */}
+      {/* Debug info for development */}
       {process.env.NODE_ENV === 'development' && (
         <div className="absolute bottom-2 left-2 bg-black/50 p-2 rounded text-xs text-white">
-          <div>Movement: {debugInfo.movement}</div>
-          <div>Threshold: {debugInfo.threshold}</div>
+          <div>Progress: {debugInfo.progress.toFixed(2)}</div>
+          <div>Similarity: {debugInfo.similarity.toFixed(2)}</div>
           <div>State: {debugInfo.state}</div>
         </div>
       )}
