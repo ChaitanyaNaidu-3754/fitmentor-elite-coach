@@ -1,9 +1,9 @@
-
-import { useRef } from "react";
+import { useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Camera } from "lucide-react";
 import MotionDetector from "./MotionDetector";
 import ExerciseOverlay from "./ExerciseOverlay";
+import PoseDetectionOverlay from "./PoseDetectionOverlay";
 
 interface CameraViewProps {
   cameraActive: boolean;
@@ -28,6 +28,9 @@ const CameraView = ({
   startStopCamera,
   onRepDetected
 }: CameraViewProps) => {
+  // We'll keep this state for compatibility but won't use it visually
+  const [detectedPose, setDetectedPose] = useState<any>(null);
+
   return (
     <div className="relative flex-grow bg-fitmentor-black flex items-center justify-center">
       {/* Video element - Always render but conditionally display */}
@@ -48,6 +51,17 @@ const CameraView = ({
           isPaused={isPaused}
           currentExercise={currentExercise}
           onRepDetected={onRepDetected}
+          onPoseDetected={setDetectedPose}
+        />
+      )}
+
+      {/* Pose Detection Overlay - now effectively disabled */}
+      {cameraActive && (
+        <PoseDetectionOverlay
+          videoRef={videoRef}
+          isActive={false} // Always set to false to prevent rendering
+          isPaused={isPaused}
+          detectedPose={null} // Always pass null to prevent any calculations
         />
       )}
 
