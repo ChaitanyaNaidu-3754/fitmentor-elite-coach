@@ -1,3 +1,4 @@
+
 import { useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Camera } from "lucide-react";
@@ -28,7 +29,7 @@ const CameraView = ({
   startStopCamera,
   onRepDetected
 }: CameraViewProps) => {
-  // We'll keep this state for compatibility but won't use it visually
+  // Store detected pose data
   const [detectedPose, setDetectedPose] = useState<any>(null);
 
   return (
@@ -55,13 +56,13 @@ const CameraView = ({
         />
       )}
 
-      {/* Pose Detection Overlay - now effectively disabled */}
+      {/* Pose Detection Overlay */}
       {cameraActive && (
         <PoseDetectionOverlay
           videoRef={videoRef}
-          isActive={false} // Always set to false to prevent rendering
+          isActive={isWorkoutActive}
           isPaused={isPaused}
-          detectedPose={null} // Always pass null to prevent any calculations
+          detectedPose={detectedPose}
         />
       )}
 
