@@ -1,4 +1,3 @@
-
 // Gemini API Edge Function
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
@@ -32,9 +31,9 @@ serve(async (req) => {
     // Prepare the system context and user prompt
     const nutritionContext = "You are a helpful nutrition assistant specializing in fitness. Provide accurate, science-backed nutrition advice, meal plans, and diet tips to support fitness goals. Keep responses constructive, practical, and tailored to the user's query.";
 
-    // Call Gemini API
+    // Call Gemini API with corrected endpoint and model (v1beta and gemini-2.0-flash)
     const response = await fetch(
-      "https://generativelanguage.googleapis.com/v1/models/gemini-pro:generateContent?key=" + geminiApiKey,
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${geminiApiKey}`,
       {
         method: "POST",
         headers: {
@@ -43,13 +42,13 @@ serve(async (req) => {
         body: JSON.stringify({
           contents: [
             {
-              role: "user",
               parts: [
                 { text: nutritionContext },
                 { text: prompt }
               ]
             }
           ],
+          // Keep some configuration parameters but adjusted for the new model
           generationConfig: {
             temperature: 0.7,
             topK: 40,
@@ -74,7 +73,7 @@ serve(async (req) => {
       );
     }
 
-    // Extract the response text from Gemini's response format
+    // Extract the response text from Gemini's response format, updated for new API structure
     const generatedText = data.candidates?.[0]?.content?.parts?.[0]?.text || "Sorry, I couldn't generate a response at this time.";
 
     return new Response(
