@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
 import { Button } from "@/components/ui/button";
@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Avatar } from "@/components/ui/avatar";
 import { useToast } from "@/hooks/use-toast";
 import { Send, PlusCircle } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
 
 interface Message {
   id: string;
@@ -28,26 +29,35 @@ const NutritionPage = () => {
   ]);
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
+  const messagesEndRef = useRef<null | HTMLDivElement>(null);
+
+  // Function to scroll to the bottom of the messages container
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  };
+
+  useEffect(() => {
+    scrollToBottom();
+  }, [messages]);
 
   // Function to generate a unique ID for messages
   const generateId = () => `msg_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 
-  // Mock AI response function - in a real implementation, this would call the AI endpoint
+  // Function to get AI response from Gemini via our Supabase Edge Function
   const getAIResponse = async (userPrompt: string): Promise<string> => {
-    // Simulate network delay
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    
-    // List of predefined responses based on common nutrition queries
-    const responses = [
-      `Based on your question about "${userPrompt.slice(0, 20)}...", I'd recommend focusing on whole foods like lean proteins, fruits, vegetables, and whole grains. These provide essential nutrients while supporting your fitness goals.`,
-      `Great question! For optimal nutrition when working out, aim to consume a balance of carbohydrates and protein within 45 minutes after exercise to support muscle recovery.`,
-      `I'd suggest a meal plan that includes breakfast with oats and protein, lunch with lean protein and vegetables, and dinner with a balanced mix of protein, complex carbs, and healthy fats.`,
-      `Staying hydrated is crucial! Aim for at least 8 cups (64 ounces) of water daily, and more when you're active or in hot weather.`,
-      `Consider adding foods rich in omega-3 fatty acids to your diet, such as salmon, walnuts, and flaxseeds. These can help reduce inflammation and support heart health.`,
-    ];
-    
-    // Return a random response from the list
-    return responses[Math.floor(Math.random() * responses.length)];
+    try {
+      const { data, error } = await supabase.functions.invoke("gemini-nutrition-chat", {
+        body: { prompt: userPrompt },
+      });
+
+      if (error) throw new Error(error.message);
+      if (!data || !data.generatedText) throw new Error("No response from AI");
+      
+      return data.generatedText;
+    } catch (error) {
+      console.error("Error calling Gemini API:", error);
+      throw error;
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -68,7 +78,7 @@ const NutritionPage = () => {
     setIsLoading(true);
 
     try {
-      // Get AI response
+      // Get AI response from Gemini
       const response = await getAIResponse(prompt);
       
       // Add AI response to the list
@@ -155,6 +165,7 @@ const NutritionPage = () => {
                     </div>
                   </div>
                 )}
+                <div ref={messagesEndRef} />
               </div>
 
               <form onSubmit={handleSubmit} className="flex gap-2">
