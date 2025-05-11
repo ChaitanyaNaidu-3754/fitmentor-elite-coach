@@ -63,7 +63,7 @@ const Navbar = () => {
       icon: <Dumbbell size={18} />,
     },
     {
-      name: "Nutrition",
+      name: "KAZNOR",
       path: "/nutrition",
       icon: <Apple size={18} />,
     },

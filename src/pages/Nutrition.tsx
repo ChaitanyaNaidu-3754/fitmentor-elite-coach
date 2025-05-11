@@ -1,4 +1,3 @@
-
 import { useState, useRef, useEffect } from "react";
 import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
@@ -23,7 +22,7 @@ const NutritionPage = () => {
     {
       id: "welcome",
       role: "assistant",
-      content: "👋 Hi there! I'm your nutrition assistant. Ask me anything about nutrition, meal planning, diet tips, or recipe ideas!",
+      content: "👋 Hi there! I'm KAZNOR, your nutrition assistant. Ask me anything about nutrition, meal planning, diet tips, or recipe ideas!",
       timestamp: new Date(),
     },
   ]);
@@ -107,7 +106,7 @@ const NutritionPage = () => {
       <div className="container mx-auto px-6 pt-28 pb-12 min-h-screen">
         <div className="max-w-4xl mx-auto">
           <header className="mb-10">
-            <h1 className="text-3xl md:text-4xl font-bold mb-2">Nutrition Assistant</h1>
+            <h1 className="text-3xl md:text-4xl font-bold mb-2">KAZNOR Nutrition Assistant</h1>
             <p className="text-fitmentor-medium-gray">
               Get personalized nutrition advice, meal plans, and diet tips to support your fitness goals
             </p>
@@ -135,7 +134,7 @@ const NutritionPage = () => {
                           <Avatar className="h-6 w-6 mr-2 bg-fitmentor-black">
                             <span>AI</span>
                           </Avatar>
-                          <span className="font-bold text-sm">Nutrition Assistant</span>
+                          <span className="font-bold text-sm">KAZNOR</span>
                         </div>
                       )}
                       <p className="whitespace-pre-wrap">{message.content}</p>
@@ -155,7 +154,7 @@ const NutritionPage = () => {
                         <Avatar className="h-6 w-6 mr-2 bg-fitmentor-black">
                           <span>AI</span>
                         </Avatar>
-                        <span className="font-bold text-sm">Nutrition Assistant</span>
+                        <span className="font-bold text-sm">KAZNOR</span>
                       </div>
                       <div className="mt-2 flex space-x-2">
                         <div className="w-2 h-2 rounded-full bg-fitmentor-black animate-bounce"></div>
@@ -172,7 +171,7 @@ const NutritionPage = () => {
                 <Input
                   value={prompt}
                   onChange={(e) => setPrompt(e.target.value)}
-                  placeholder="Ask about nutrition, meal plans, or diet tips..."
+                  placeholder="Ask KAZNOR about nutrition, meal plans, or diet tips..."
                   className="flex-grow bg-fitmentor-dark-gray text-fitmentor-cream border-fitmentor-cream/30"
                   disabled={isLoading}
                 />

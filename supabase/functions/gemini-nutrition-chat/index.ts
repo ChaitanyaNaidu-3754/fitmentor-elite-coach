@@ -1,3 +1,4 @@
+
 // Gemini API Edge Function
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
@@ -28,8 +29,8 @@ serve(async (req) => {
       );
     }
 
-    // Prepare the system context and user prompt
-    const nutritionContext = "You are a helpful nutrition assistant specializing in fitness. Provide accurate, science-backed nutrition advice, meal plans, and diet tips to support fitness goals. Keep responses constructive, practical, and tailored to the user's query.";
+    // Enhanced context with clearer formatting instructions
+    const nutritionContext = "You are KAZNOR, a helpful nutrition assistant specializing in fitness. Provide accurate, science-backed nutrition advice, meal plans, and diet tips to support fitness goals. IMPORTANT INSTRUCTIONS FOR FORMATTING: 1) Use clear, direct language. 2) Avoid using markdown formatting like asterisks unless necessary. 3) Ensure all responses are complete without cutting off mid-sentence. 4) Be concise and informative - avoid unnecessary introductory or concluding remarks. 5) Focus strictly on providing helpful nutrition information related to the user's query.";
 
     // Call Gemini API with corrected endpoint and model (v1beta and gemini-2.0-flash)
     const response = await fetch(
