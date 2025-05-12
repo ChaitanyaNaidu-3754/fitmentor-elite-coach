@@ -1,9 +1,8 @@
-import { useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Camera } from "lucide-react";
-import MotionDetector from "./MotionDetector";
+import { useState } from "react";
 import ExerciseOverlay from "./ExerciseOverlay";
-import PoseDetectionOverlay from "./PoseDetectionOverlay";
+import MotionDetector from "./MotionDetector";
 
 interface CameraViewProps {
   cameraActive: boolean;
@@ -28,7 +27,6 @@ const CameraView = ({
   startStopCamera,
   onRepDetected
 }: CameraViewProps) => {
-  // We'll keep this state for compatibility but won't use it visually
   const [detectedPose, setDetectedPose] = useState<any>(null);
 
   return (
@@ -40,28 +38,18 @@ const CameraView = ({
         playsInline
         muted
         className={`h-full w-full object-cover ${cameraActive ? 'block' : 'hidden'}`}
-        style={{ transform: 'scaleX(-1)', minHeight: '400px' }} // Mirror effect for better UX with min-height
+        style={{ transform: 'scaleX(-1)', minHeight: '400px' }}
       />
 
       {/* Motion detection component */}
       {cameraActive && (
-        <MotionDetector 
-          videoRef={videoRef} 
-          isActive={isWorkoutActive} 
+        <MotionDetector
+          videoRef={videoRef}
+          isActive={isWorkoutActive}
           isPaused={isPaused}
           currentExercise={currentExercise}
           onRepDetected={onRepDetected}
           onPoseDetected={setDetectedPose}
-        />
-      )}
-
-      {/* Pose Detection Overlay - now effectively disabled */}
-      {cameraActive && (
-        <PoseDetectionOverlay
-          videoRef={videoRef}
-          isActive={false} // Always set to false to prevent rendering
-          isPaused={isPaused}
-          detectedPose={null} // Always pass null to prevent any calculations
         />
       )}
 
@@ -78,7 +66,6 @@ const CameraView = ({
           <Button onClick={startStopCamera} className="secondary-button">
             Enable Camera
           </Button>
-          
           {cameraPermission === false && (
             <div className="mt-4 p-3 border border-red-400 rounded bg-red-400/10">
               <p className="text-red-400 text-sm">
@@ -91,7 +78,7 @@ const CameraView = ({
 
       {/* Exercise info overlay when workout is active */}
       {cameraActive && currentExercise && (
-        <ExerciseOverlay 
+        <ExerciseOverlay
           exercise={currentExercise}
           currentRep={currentRep}
           isWorkoutActive={isWorkoutActive}

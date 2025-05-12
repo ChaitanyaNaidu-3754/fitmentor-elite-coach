@@ -1,12 +1,12 @@
-
-import { useState, useEffect } from "react";
-import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
-import { Card, CardContent } from "@/components/ui/card";
+import Navbar from "@/components/layout/Navbar";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuth } from "@/hooks/use-auth";
 import { supabase } from "@/integrations/supabase/client";
+import { Calendar, Clock, Flame, Repeat } from "lucide-react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 const Profile = () => {
@@ -14,8 +14,10 @@ const Profile = () => {
   const navigate = useNavigate();
   const [userGoals, setUserGoals] = useState<any>(null);
   const [userStats, setUserStats] = useState<any>(null);
+  const [workoutHistory, setWorkoutHistory] = useState<any[]>([]);
   const [goalsLoading, setGoalsLoading] = useState(true);
   const [statsLoading, setStatsLoading] = useState(true);
+  const [historyLoading, setHistoryLoading] = useState(true);
 
   useEffect(() => {
     if (!user && !loading) {
@@ -67,9 +69,45 @@ const Profile = () => {
         }
       }
     };
+    
+    const fetchWorkoutHistory = async () => {
+      if (user) {
+        setHistoryLoading(true);
+        try {
+          // Join workout_history with workouts to get workout names
+          const { data, error } = await supabase
+            .from('workout_history')
+            .select(`
+              id,
+              date,
+              duration_seconds,
+              calories_burned,
+              reps,
+              workouts:workout_id (
+                name
+              )
+            `)
+            .eq('user_id', user.id)
+            .order('date', { ascending: false })
+            .limit(10);
+            
+          if (error) {
+            console.error("Error fetching workout history:", error);
+          } else {
+            console.log("Fetched workout history:", data);
+            setWorkoutHistory(data || []);
+          }
+        } catch (error) {
+          console.error("Error fetching workout history:", error);
+        } finally {
+          setHistoryLoading(false);
+        }
+      }
+    };
 
     fetchUserGoals();
     fetchUserStats();
+    fetchWorkoutHistory();
   }, [user]);
 
   // Format the date
@@ -80,6 +118,14 @@ const Profile = () => {
       month: "long",
       day: "numeric"
     });
+  };
+  
+  // Format time from seconds to minutes:seconds
+  const formatTime = (seconds: number | null) => {
+    if (!seconds) return "0:00";
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
   if (loading) {
@@ -324,13 +370,64 @@ const Profile = () => {
               
               {/* Workout History */}
               <TabsContent value="history" className="p-6">
-                <div className="text-center py-10">
-                  <p className="text-fitmentor-medium-gray mb-4">No workout history available yet</p>
-                  <p className="text-fitmentor-cream mb-6">Complete your first workout to see it here!</p>
-                  <Button className="premium-button" onClick={() => navigate("/workouts")}>
-                    Find a Workout
-                  </Button>
-                </div>
+                {historyLoading ? (
+                  <div className="text-center py-10">
+                    <p>Loading workout history...</p>
+                  </div>
+                ) : workoutHistory && workoutHistory.length > 0 ? (
+                  <div>
+                    <h3 className="text-xl font-bold text-fitmentor-cream mb-6">Recent Workouts</h3>
+                    <div className="space-y-4">
+                      {workoutHistory.map((workout) => (
+                        <Card key={workout.id} className="glass-card border-none">
+                          <CardContent className="p-4">
+                            <div className="flex flex-col md:flex-row md:items-center justify-between">
+                              <div className="mb-3 md:mb-0">
+                                <h4 className="font-semibold text-fitmentor-cream text-lg">
+                                  {workout.workouts?.name || "Unknown Workout"}
+                                </h4>
+                                <div className="flex items-center mt-1">
+                                  <Calendar size={16} className="text-fitmentor-medium-gray mr-1" />
+                                  <p className="text-sm text-fitmentor-medium-gray">
+                                    {formatDate(workout.date)}
+                                  </p>
+                                </div>
+                              </div>
+                              <div className="flex flex-wrap gap-3">
+                                <div className="flex items-center">
+                                  <Clock size={16} className="text-fitmentor-medium-gray mr-1" />
+                                  <p className="text-sm text-fitmentor-cream">
+                                    {formatTime(workout.duration_seconds)}
+                                  </p>
+                                </div>
+                                <div className="flex items-center">
+                                  <Flame size={16} className="text-fitmentor-medium-gray mr-1" />
+                                  <p className="text-sm text-fitmentor-cream">
+                                    {workout.calories_burned || 0} kcal
+                                  </p>
+                                </div>
+                                <div className="flex items-center">
+                                  <Repeat size={16} className="text-fitmentor-medium-gray mr-1" />
+                                  <p className="text-sm text-fitmentor-cream">
+                                    {workout.reps || 0} reps
+                                  </p>
+                                </div>
+                              </div>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      ))}
+                    </div>
+                  </div>
+                ) : (
+                  <div className="text-center py-10">
+                    <p className="text-fitmentor-medium-gray mb-4">No workout history available yet</p>
+                    <p className="text-fitmentor-cream mb-6">Complete your first workout to see it here!</p>
+                    <Button className="premium-button" onClick={() => navigate("/workouts")}>
+                      Find a Workout
+                    </Button>
+                  </div>
+                )}
               </TabsContent>
             </Tabs>
           </div>

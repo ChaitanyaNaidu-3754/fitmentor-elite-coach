@@ -12,317 +12,413 @@ interface MotionDetectorProps {
   onPoseDetected: (pose: Pose | null) => void;
 }
 
-const MotionDetector = ({ 
-  videoRef, 
-  isActive, 
-  isPaused, 
-  currentExercise,
-  onRepDetected,
-  onPoseDetected
-}: MotionDetectorProps) => {
+interface Keypoint {
+  x: number;
+  y: number;
+  confidence: number;
+}
+
+interface Keypoints {
+  [key: string]: Keypoint;
+}
+
+interface JointConfig {
+  a: string;
+  b: string;
+  c: string;
+  down: number;
+  up: number;
+}
+
+interface FormCheckConfig {
+  a: string;
+  b: string;
+  c: string;
+  maxAngle: number;
+}
+
+interface ExerciseConfig {
+  primary: JointConfig;
+  secondary: JointConfig;
+  formChecks: {
+    [key: string]: FormCheckConfig;
+  };
+}
+
+interface PoseResults {
+  poseLandmarks: Array<{
+    x: number;
+    y: number;
+    z: number;
+    visibility: number;
+  }>;
+}
+
+// All 33 BlazePose landmarks mapping
+const LANDMARK_MAPPING = {
+  0: 'nose',
+  1: 'left_eye_inner',
+  2: 'left_eye',
+  3: 'left_eye_outer',
+  4: 'right_eye_inner',
+  5: 'right_eye',
+  6: 'right_eye_outer',
+  7: 'left_ear',
+  8: 'right_ear',
+  9: 'mouth_left',
+  10: 'mouth_right',
+  11: 'left_shoulder',
+  12: 'right_shoulder',
+  13: 'left_elbow',
+  14: 'right_elbow',
+  15: 'left_wrist',
+  16: 'right_wrist',
+  17: 'left_pinky',
+  18: 'right_pinky',
+  19: 'left_index',
+  20: 'right_index',
+  21: 'left_thumb',
+  22: 'right_thumb',
+  23: 'left_hip',
+  24: 'right_hip',
+  25: 'left_knee',
+  26: 'right_knee',
+  27: 'left_ankle',
+  28: 'right_ankle',
+  29: 'left_heel',
+  30: 'right_heel',
+  31: 'left_foot_index',
+  32: 'right_foot_index'
+};
+
+// Exercise-specific configurations with more precise joint tracking
+const EXERCISE_CONFIGS: { [key: string]: ExerciseConfig } = {
+  pushups: {
+    primary: { a: 'left_shoulder', b: 'left_elbow', c: 'left_wrist', down: 90, up: 160 },
+    secondary: { a: 'right_shoulder', b: 'right_elbow', c: 'right_wrist', down: 90, up: 160 },
+    formChecks: {}
+  },
+  squats: {
+    primary: { a: 'left_hip', b: 'left_knee', c: 'left_ankle', down: 100, up: 150 },
+    secondary: { a: 'right_hip', b: 'right_knee', c: 'right_ankle', down: 100, up: 150 },
+    formChecks: {}
+  },
+  plank: {
+    primary: { a: 'left_shoulder', b: 'left_hip', c: 'left_ankle', down: 170, up: 170 },
+    secondary: { a: 'right_shoulder', b: 'right_hip', c: 'right_ankle', down: 170, up: 170 },
+    formChecks: {}
+  },
+  jumpingjacks: {
+    primary: { a: 'left_hip', b: 'left_shoulder', c: 'left_wrist', down: 60, up: 140 },
+    secondary: { a: 'right_hip', b: 'right_shoulder', c: 'right_wrist', down: 60, up: 140 },
+    formChecks: {}
+  },
+  dumbbellshoulderpress: {
+    primary: { a: 'left_shoulder', b: 'left_elbow', c: 'left_wrist', down: 60, up: 160 },
+    secondary: { a: 'right_shoulder', b: 'right_elbow', c: 'right_wrist', down: 60, up: 160 },
+    formChecks: {}
+  },
+  bentoverrows: {
+    primary: { a: 'left_shoulder', b: 'left_elbow', c: 'left_wrist', down: 80, up: 160 },
+    secondary: { a: 'right_shoulder', b: 'right_elbow', c: 'right_wrist', down: 80, up: 160 },
+    formChecks: {}
+  },
+  chestpress: {
+    primary: { a: 'left_shoulder', b: 'left_elbow', c: 'left_wrist', down: 80, up: 160 },
+    secondary: { a: 'right_shoulder', b: 'right_elbow', c: 'right_wrist', down: 80, up: 160 },
+    formChecks: {}
+  },
+  tricepdips: {
+    primary: { a: 'left_shoulder', b: 'left_elbow', c: 'left_wrist', down: 90, up: 160 },
+    secondary: { a: 'right_shoulder', b: 'right_elbow', c: 'right_wrist', down: 90, up: 160 },
+    formChecks: {}
+  },
+  crunches: {
+    primary: { a: 'left_hip', b: 'left_shoulder', c: 'left_elbow', down: 60, up: 120 },
+    secondary: { a: 'right_hip', b: 'right_shoulder', c: 'right_elbow', down: 60, up: 120 },
+    formChecks: {}
+  },
+  russiantwists: {
+    primary: { a: 'left_hip', b: 'left_shoulder', c: 'left_elbow', down: 60, up: 120 },
+    secondary: { a: 'right_hip', b: 'right_shoulder', c: 'right_elbow', down: 60, up: 120 },
+    formChecks: {}
+  },
+  bicyclecrunches: {
+    primary: { a: 'left_hip', b: 'left_shoulder', c: 'left_elbow', down: 60, up: 120 },
+    secondary: { a: 'right_hip', b: 'right_shoulder', c: 'right_elbow', down: 60, up: 120 },
+    formChecks: {}
+  },
+  mountainclimbers: {
+    primary: { a: 'left_hip', b: 'left_knee', c: 'left_ankle', down: 80, up: 160 },
+    secondary: { a: 'right_hip', b: 'right_knee', c: 'right_ankle', down: 80, up: 160 },
+    formChecks: {}
+  },
+  highknees: {
+    primary: { a: 'left_hip', b: 'left_knee', c: 'left_ankle', down: 60, up: 160 },
+    secondary: { a: 'right_hip', b: 'right_knee', c: 'right_ankle', down: 60, up: 160 },
+    formChecks: {}
+  },
+  burpees: {
+    primary: { a: 'left_hip', b: 'left_knee', c: 'left_ankle', down: 60, up: 160 },
+    secondary: { a: 'right_hip', b: 'right_knee', c: 'right_ankle', down: 60, up: 160 },
+    formChecks: {}
+  },
+  jumprope: {
+    primary: { a: 'left_hip', b: 'left_knee', c: 'left_ankle', down: 60, up: 160 },
+    secondary: { a: 'right_hip', b: 'right_knee', c: 'right_ankle', down: 60, up: 160 },
+    formChecks: {}
+  },
+  jumpinglunges: {
+    primary: { a: 'left_hip', b: 'left_knee', c: 'left_ankle', down: 60, up: 160 },
+    secondary: { a: 'right_hip', b: 'right_knee', c: 'right_ankle', down: 60, up: 160 },
+    formChecks: {}
+  },
+  lunges: {
+    primary: { a: 'left_hip', b: 'left_knee', c: 'left_ankle', down: 60, up: 160 },
+    secondary: { a: 'right_hip', b: 'right_knee', c: 'right_ankle', down: 60, up: 160 },
+    formChecks: {}
+  },
+  deadlifts: {
+    primary: { a: 'left_hip', b: 'left_knee', c: 'left_ankle', down: 60, up: 160 },
+    secondary: { a: 'right_hip', b: 'right_knee', c: 'right_ankle', down: 60, up: 160 },
+    formChecks: {}
+  },
+  calfraises: {
+    primary: { a: 'left_ankle', b: 'left_knee', c: 'left_hip', down: 60, up: 120 },
+    secondary: { a: 'right_ankle', b: 'right_knee', c: 'right_hip', down: 60, up: 120 },
+    formChecks: {}
+  },
+  glutebridges: {
+    primary: { a: 'left_hip', b: 'left_knee', c: 'left_ankle', down: 60, up: 120 },
+    secondary: { a: 'right_hip', b: 'right_knee', c: 'right_ankle', down: 60, up: 120 },
+    formChecks: {}
+  }
+};
+
+function calculateAngle(a: Keypoint, b: Keypoint, c: Keypoint): number {
+  const radians = Math.atan2(c.y - b.y, c.x - b.x) - Math.atan2(a.y - b.y, a.x - b.x);
+  let angle = Math.abs(radians * 180.0 / Math.PI);
+  if (angle > 180.0) angle = 360 - angle;
+  return angle;
+}
+
+function calculateDistance(a: Keypoint, b: Keypoint): number {
+  return Math.sqrt(Math.pow(b.x - a.x, 2) + Math.pow(b.y - a.y, 2));
+}
+
+export default function MotionDetector({
+  videoRef, isActive, isPaused, currentExercise, onRepDetected, onPoseDetected
+}: MotionDetectorProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const requestAnimationFrameRef = useRef<number | null>(null);
-  const previousPoseRef = useRef<Pose | null>(null);
-  const repStateRef = useRef<'up' | 'down'>('up');
-  const lastRepTimeRef = useRef<number>(0);
-  const poseDetectorRef = useRef<mpPose.Pose | null>(null);
-  const [debugInfo, setDebugInfo] = useState<{ 
-    state: string,
-    feedback: string,
-    repCount: number,
-    currentAngle: number
-  }>({
+  const requestRef = useRef<number | null>(null);
+  const poseRef = useRef<mpPose.Pose | null>(null);
+  const repState = useRef('up');
+  const lastRepTime = useRef(0);
+  const [isPoseLoaded, setIsPoseLoaded] = useState(false);
+  const [debug, setDebug] = useState({
     state: 'up',
-    feedback: 'Get ready to start',
     repCount: 0,
-    currentAngle: 0
+    angle: 0,
+    feedback: '',
+    formFeedback: [],
+    exercise: '',
+    downThreshold: 0,
+    upThreshold: 0
   });
+
+  // Update exercise info when exercise changes
+  useEffect(() => {
+    if (currentExercise && currentExercise.name) {
+      const ex = currentExercise.name.toLowerCase().replace(/[^a-z0-9]/g, '');
+      const config = EXERCISE_CONFIGS[ex] || EXERCISE_CONFIGS.squats;
+      setDebug(d => ({
+        ...d,
+        exercise: ex,
+        downThreshold: config.primary.down + 20,
+        upThreshold: config.primary.up - 20,
+      }));
+      
+      // Reset the rep state for the new exercise
+      repState.current = 'up';
+    }
+  }, [currentExercise]);
 
   // Initialize MediaPipe Pose
   useEffect(() => {
-    const initializePoseDetector = async () => {
+    let isMounted = true;
+    let pose: mpPose.Pose | null = null;
+
+    async function initPose() {
       try {
-        const pose = new mpPose.Pose({
-          locateFile: (file) => {
-            return `https://cdn.jsdelivr.net/npm/@mediapipe/pose/${file}`;
-          }
+        pose = new mpPose.Pose({
+          locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/pose@0.5.1635988162/${file}`
         });
 
         pose.setOptions({
           modelComplexity: 2,
           smoothLandmarks: true,
-          enableSegmentation: true,
-          smoothSegmentation: true,
+          enableSegmentation: false,
           minDetectionConfidence: 0.5,
           minTrackingConfidence: 0.5
         });
 
-        poseDetectorRef.current = pose;
+        pose.onResults((results) => {
+          const canvas = canvasRef.current;
+          if (!canvas) return;
+          const ctx = canvas.getContext('2d', { willReadFrequently: true });
+          if (!ctx) return;
+
+          // Draw video frame
+          if (videoRef.current && videoRef.current.videoWidth && videoRef.current.videoHeight) {
+            canvas.width = videoRef.current.videoWidth;
+            canvas.height = videoRef.current.videoHeight;
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.drawImage(videoRef.current, 0, 0, canvas.width, canvas.height);
+          }
+
+          if (results.poseLandmarks) {
+            mpDrawing.drawConnectors(
+              ctx,
+              results.poseLandmarks,
+              mpPose.POSE_CONNECTIONS,
+              { color: '#00FF00', lineWidth: 2 }
+            );
+            mpDrawing.drawLandmarks(
+              ctx,
+              results.poseLandmarks,
+              { color: '#FF0000', lineWidth: 1 }
+            );
+
+            // --- Optimized Rep Counting Logic ---
+            const keypoints: Keypoints = {};
+            results.poseLandmarks.forEach((lm, i) => {
+              const name = LANDMARK_MAPPING[i];
+              if (name) {
+                keypoints[name] = {
+                  x: lm.x,
+                  y: lm.y,
+                  confidence: lm.visibility
+                };
+              }
+            });
+
+            const ex = (currentExercise?.name || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+            const config = EXERCISE_CONFIGS[ex] || EXERCISE_CONFIGS.squats;
+            const primary = config.primary;
+            const a = keypoints[primary.a];
+            const b = keypoints[primary.b];
+            const c = keypoints[primary.c];
+
+            // Loosen confidence and angle requirements
+            if (a && b && c && a.confidence > 0.3 && b.confidence > 0.3 && c.confidence > 0.3) {
+              const angle = calculateAngle(a, b, c);
+              const downThreshold = primary.down + 20;
+              const upThreshold = primary.up - 20;
+              setDebug(d => ({
+                ...d,
+                angle: Math.round(angle),
+                state: repState.current,
+                exercise: ex,
+                downThreshold,
+                upThreshold
+              }));
+              console.log(
+                `Exercise: ${ex}, Angle: ${angle}, State: ${repState.current}, Down: ${downThreshold}, Up: ${upThreshold}`
+              );
+              const now = Date.now();
+              if (repState.current === 'up' && angle <= downThreshold) {
+                repState.current = 'down';
+                setDebug(d => ({
+                  ...d,
+                  state: 'down',
+                  feedback: 'Now return up'
+                }));
+              } else if (repState.current === 'down' && angle >= upThreshold) {
+                if (now - lastRepTime.current > 400) {
+                  repState.current = 'up';
+                  lastRepTime.current = now;
+                  setDebug(d => ({
+                    ...d,
+                    state: 'up',
+                    repCount: d.repCount + 1,
+                    feedback: 'Rep counted!'
+                  }));
+                  onRepDetected();
+                }
+              }
+            }
+
+            onPoseDetected({ keypoints, score: 1.0 });
+          } else {
+            console.log('No pose landmarks detected');
+          }
+        });
+
+        poseRef.current = pose;
+        if (isMounted) setIsPoseLoaded(true);
+        console.log('MediaPipe Pose initialized successfully');
       } catch (error) {
         console.error('Error initializing pose detector:', error);
       }
-    };
-
-    initializePoseDetector();
-  }, []);
-
-  // Calculate angle between three points
-  const calculateAngle = (a: { x: number, y: number }, b: { x: number, y: number }, c: { x: number, y: number }): number => {
-    const radians = Math.atan2(c.y - b.y, c.x - b.x) - Math.atan2(a.y - b.y, a.x - b.x);
-    let angle = Math.abs(radians * 180.0 / Math.PI);
-    if (angle > 180.0) {
-      angle = 360 - angle;
     }
-    return angle;
-  };
 
-  // Get exercise-specific configuration
-  const getExerciseConfig = (exercise: any) => {
-    const name = exercise.name.toLowerCase();
-    
-    if (name.includes('squat')) {
-      return {
-        type: 'squat',
-        keypoints: {
-          joint1: 'leftHip',
-          joint2: 'leftKnee',
-          joint3: 'leftAnkle'
-        },
-        thresholds: {
-          downAngle: 100,  // More lenient angle for squatting down
-          upAngle: 150,    // More lenient angle for standing up
-          minConfidence: 0.5
-        }
-      };
-    } else if (name.includes('pushup')) {
-      return {
-        type: 'pushup',
-        keypoints: {
-          joint1: 'leftShoulder',
-          joint2: 'leftElbow',
-          joint3: 'leftWrist'
-        },
-        thresholds: {
-          downAngle: 90,
-          upAngle: 160,
-          minConfidence: 0.5
-        }
-      };
-    } else if (name.includes('curl')) {
-      return {
-        type: 'curl',
-        keypoints: {
-          joint1: 'leftShoulder',
-          joint2: 'leftElbow',
-          joint3: 'leftWrist'
-        },
-        thresholds: {
-          downAngle: 150,  // Arms down
-          upAngle: 60,     // Arms up
-          minConfidence: 0.5
-        }
-      };
-    }
-    
-    // Default to squat configuration
-    return {
-      type: 'squat',
-      keypoints: {
-        joint1: 'leftHip',
-        joint2: 'leftKnee',
-        joint3: 'leftAnkle'
-      },
-      thresholds: {
-        downAngle: 100,
-        upAngle: 150,
-        minConfidence: 0.5
+    initPose();
+
+    return () => {
+      isMounted = false;
+      if (poseRef.current) {
+        poseRef.current.close();
       }
     };
-  };
+  }, [videoRef]);
 
-  // Set up motion detection and pose analysis
+  // Main detection loop
   useEffect(() => {
-    if (!isActive || isPaused || !videoRef.current || !canvasRef.current || !poseDetectorRef.current) {
-      if (requestAnimationFrameRef.current) {
-        cancelAnimationFrame(requestAnimationFrameRef.current);
-        requestAnimationFrameRef.current = null;
+    if (!isActive || isPaused || !videoRef.current || !canvasRef.current || !isPoseLoaded) {
+      if (requestRef.current) {
+        cancelAnimationFrame(requestRef.current);
       }
-      onPoseDetected(null);
       return;
     }
-
-    const video = videoRef.current;
-    const canvas = canvasRef.current;
-    const ctx = canvas.getContext('2d', { willReadFrequently: true });
     
-    if (!ctx) {
-      console.error("Could not get canvas context");
-      return;
-    }
+    let running = true;
 
-    const exerciseConfig = getExerciseConfig(currentExercise);
-    
-    // Ensure canvas is the correct size
-    const resizeCanvas = () => {
-      if (video.videoWidth && video.videoHeight) {
-        canvas.width = video.videoWidth;
-        canvas.height = video.videoHeight;
-      } else {
-        canvas.width = 640;
-        canvas.height = 480;
-      }
-    };
-
-    // Start motion detection and pose analysis
     const detect = async () => {
-      if (!video.videoWidth) {
-        requestAnimationFrameRef.current = requestAnimationFrame(detect);
-        return;
+      if (!running) return;
+      if (poseRef.current && videoRef.current && videoRef.current.readyState >= 2) {
+        await poseRef.current.send({ image: videoRef.current });
       }
-
-      // Make sure canvas is sized correctly
-      if (canvas.width !== video.videoWidth || canvas.height !== video.videoHeight) {
-        resizeCanvas();
-      }
-      
-      // Draw current frame to canvas
-      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-      
-      try {
-        // Get pose landmarks using MediaPipe
-        const results = await poseDetectorRef.current!.send({ image: canvas });
-        
-        if (results.poseLandmarks) {
-          // Draw the pose landmarks
-          mpDrawing.drawConnectors(
-            ctx, 
-            results.poseLandmarks, 
-            mpPose.POSE_CONNECTIONS,
-            { color: '#00FF00', lineWidth: 2 }
-          );
-          mpDrawing.drawLandmarks(
-            ctx, 
-            results.poseLandmarks,
-            { color: '#FF0000', lineWidth: 1 }
-          );
-
-          // Convert MediaPipe landmarks to our format
-          const currentPose: Pose = {
-            keypoints: {},
-            score: 1.0
-          };
-
-          results.poseLandmarks.forEach((landmark, index) => {
-            const keypointName = Object.keys(mpPose.POSE_LANDMARKS)[index];
-            if (keypointName) {
-              currentPose.keypoints[keypointName] = {
-                x: landmark.x,
-                y: landmark.y,
-                confidence: landmark.visibility
-              };
-            }
-          });
-
-          // Get the keypoints for the current exercise
-          const { keypoints, thresholds } = exerciseConfig;
-          const points = [
-            currentPose.keypoints[keypoints.joint1],
-            currentPose.keypoints[keypoints.joint2],
-            currentPose.keypoints[keypoints.joint3]
-          ];
-          
-          // Check if we have all required keypoints with sufficient confidence
-          if (points.every(point => point && point.confidence > thresholds.minConfidence)) {
-            // Calculate the angle based on exercise type
-            const angle = calculateAngle(points[0], points[1], points[2]);
-            
-            // Update debug info with current angle
-            setDebugInfo(prev => ({
-              ...prev,
-              currentAngle: Math.round(angle)
-            }));
-
-            // Process rep counting
-            const currentTime = Date.now();
-            const timeSinceLastRep = currentTime - lastRepTimeRef.current;
-            
-            if (repStateRef.current === 'up') {
-              if (angle <= thresholds.downAngle) {
-                repStateRef.current = 'down';
-                setDebugInfo(prev => ({
-                  ...prev,
-                  state: 'down',
-                  feedback: 'Good! Now return to start position'
-                }));
-              } else {
-                setDebugInfo(prev => ({
-                  ...prev,
-                  feedback: 'Go lower'
-                }));
-              }
-            } else {
-              if (angle >= thresholds.upAngle) {
-                if (timeSinceLastRep > 1000) { // Minimum 1 second between reps
-                  repStateRef.current = 'up';
-                  lastRepTimeRef.current = currentTime;
-                  onRepDetected();
-                  setDebugInfo(prev => ({
-                    ...prev,
-                    state: 'up',
-                    feedback: 'Great rep! Keep going',
-                    repCount: prev.repCount + 1
-                  }));
-                }
-              } else {
-                setDebugInfo(prev => ({
-                  ...prev,
-                  feedback: 'Push up higher'
-                }));
-              }
-            }
-          } else {
-            setDebugInfo(prev => ({
-              ...prev,
-              feedback: 'Adjust position to be fully visible'
-            }));
-          }
-
-          // Update detected pose
-          onPoseDetected(currentPose);
-        }
-      } catch (error) {
-        console.error('Error detecting pose:', error);
-      }
-      
-      previousPoseRef.current = currentPose;
-      requestAnimationFrameRef.current = requestAnimationFrame(detect);
+      requestRef.current = requestAnimationFrame(detect);
     };
-    
-    requestAnimationFrameRef.current = requestAnimationFrame(detect);
+
+    requestRef.current = requestAnimationFrame(detect);
     
     return () => {
-      if (requestAnimationFrameRef.current) {
-        cancelAnimationFrame(requestAnimationFrameRef.current);
-        requestAnimationFrameRef.current = null;
+      running = false;
+      if (requestRef.current) {
+        cancelAnimationFrame(requestRef.current);
       }
     };
-  }, [isActive, isPaused, videoRef, onRepDetected, onPoseDetected, currentExercise]);
+  }, [isActive, isPaused, videoRef, isPoseLoaded]);
 
   return (
     <div className="absolute inset-0 pointer-events-none">
-      <canvas ref={canvasRef} className="w-full h-full" />
-      
-      {/* Debug overlay - only show in development */}
-      {process.env.NODE_ENV === 'development' && (
-        <div className="absolute bottom-4 left-4 bg-black/50 text-white p-2 rounded text-sm">
-          <div>State: {debugInfo.state}</div>
-          <div>Reps: {debugInfo.repCount}</div>
-          <div>Angle: {debugInfo.currentAngle}°</div>
-          <div>Feedback: {debugInfo.feedback}</div>
-        </div>
-      )}
+      <canvas
+        ref={canvasRef}
+        className="w-full h-full absolute top-0 left-0 z-10"
+        style={{ transform: 'scaleX(-1)' }}
+      />
+      <div className="absolute top-4 left-4 bg-black/70 text-white p-2 rounded text-sm z-50">
+        <div>State: {debug.state}</div>
+        <div>Reps: {debug.repCount}</div>
+        <div>Angle: {debug.angle}°</div>
+        <div>Feedback: {debug.feedback}</div>
+        {debug.formFeedback.map((feedback, i) => (
+          <div key={i} className="text-yellow-400">{feedback}</div>
+        ))}
+        <div>Exercise: {debug.exercise}</div>
+        <div>Down: {debug.downThreshold} Up: {debug.upThreshold}</div>
+      </div>
     </div>
   );
-};
-
-export default MotionDetector;
+}

@@ -1,26 +1,27 @@
-
-import Navbar from "@/components/layout/Navbar";
-import Footer from "@/components/layout/Footer";
 import DashboardHeader from "@/components/dashboard/DashboardHeader";
 import StatsOverview from "@/components/dashboard/StatsOverview";
+import Footer from "@/components/layout/Footer";
+import Navbar from "@/components/layout/Navbar";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { CalendarDays, ChevronRight, Target, Play } from "lucide-react";
-import { Link } from "react-router-dom";
 import { useAuth } from "@/hooks/use-auth";
-import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import { CalendarDays, ChevronRight, Play, Target } from "lucide-react";
+import { useEffect, useState } from "react";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 
 const Dashboard = () => {
   const { user, profile, loading, profileLoading } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
+  
   const [userStats, setUserStats] = useState<any>(null);
   const [userGoals, setUserGoals] = useState<any>(null);
   const [statsLoading, setStatsLoading] = useState(true);
   const [goalsLoading, setGoalsLoading] = useState(true);
   const [recommendedWorkout, setRecommendedWorkout] = useState<any>(null);
   const [workoutLoading, setWorkoutLoading] = useState(true);
+  const [lastRefresh, setLastRefresh] = useState(Date.now());
   
   // If user is logged in but doesn't have profile info, redirect to profile setup
   useEffect(() => {
@@ -30,96 +31,95 @@ const Dashboard = () => {
     }
   }, [user, profile, loading, profileLoading, navigate]);
   
-  // Fetch user stats
+  // Check if navigating back from workout completion
   useEffect(() => {
-    const fetchUserStats = async () => {
-      if (!user) {
-        setStatsLoading(false);
-        return;
-      }
-      
-      try {
-        const { data, error } = await supabase
-          .from('user_stats')
-          .select('*')
-          .eq('user_id', user.id)
-          .single();
-          
-        if (error && error.code !== 'PGRST116') {
-          console.error("Error fetching user stats:", error);
-        } else {
-          setUserStats(data);
-        }
-      } catch (err) {
-        console.error("Error fetching user stats:", err);
-      } finally {
-        setStatsLoading(false);
-      }
-    };
-    
-    fetchUserStats();
-  }, [user]);
+    // Force refresh when coming from a workout page to ensure latest stats are loaded
+    if (location.state && location.state.fromWorkout) {
+      console.log("Navigated from workout, refreshing data");
+      fetchDashboardData();
+    }
+  }, [location]);
   
-  // Fetch user goals
-  useEffect(() => {
-    const fetchUserGoals = async () => {
-      if (!user) {
-        setGoalsLoading(false);
-        return;
-      }
-      
-      try {
-        const { data, error } = await supabase
-          .from('goals')
-          .select('*')
-          .eq('user_id', user.id)
-          .single();
-          
-        if (error && error.code !== 'PGRST116') {
-          console.error("Error fetching user goals:", error);
-        } else {
-          setUserGoals(data);
-        }
-      } catch (err) {
-        console.error("Error fetching user goals:", err);
-      } finally {
-        setGoalsLoading(false);
-      }
-    };
+  // Function to fetch all dashboard data
+  const fetchDashboardData = async () => {
+    if (!user) return;
     
-    fetchUserGoals();
-  }, [user]);
+    console.log("Fetching dashboard data at:", new Date().toISOString());
+    
+    // Fetch user stats
+    try {
+      setStatsLoading(true);
+      const { data, error } = await supabase
+        .from('user_stats')
+        .select('*')
+        .eq('user_id', user.id)
+        .single();
+        
+      if (error && error.code !== 'PGRST116') {
+        console.error("Error fetching user stats:", error);
+      } else {
+        console.log("Fetched user stats:", data);
+        setUserStats(data);
+      }
+    } catch (err) {
+      console.error("Error fetching user stats:", err);
+    } finally {
+      setStatsLoading(false);
+    }
+    
+    // Fetch user goals
+    try {
+      setGoalsLoading(true);
+      const { data, error } = await supabase
+        .from('goals')
+        .select('*')
+        .eq('user_id', user.id)
+        .single();
+        
+      if (error && error.code !== 'PGRST116') {
+        console.error("Error fetching user goals:", error);
+      } else {
+        console.log("Fetched user goals:", data);
+        setUserGoals(data);
+      }
+    } catch (err) {
+      console.error("Error fetching user goals:", err);
+    } finally {
+      setGoalsLoading(false);
+    }
+    
+    // Fetch recommended workout
+    try {
+      setWorkoutLoading(true);
+      const { data, error } = await supabase
+        .from('workouts')
+        .select('*')
+        .limit(1)
+        .single();
+        
+      if (error && error.code !== 'PGRST116') {
+        console.error("Error fetching recommended workout:", error);
+      } else {
+        setRecommendedWorkout(data);
+      }
+    } catch (err) {
+      console.error("Error fetching recommended workout:", err);
+    } finally {
+      setWorkoutLoading(false);
+    }
+  };
   
-  // Fetch a recommended workout
+  // Refresh data when component mounts, user changes, or route changes
   useEffect(() => {
-    const fetchRecommendedWorkout = async () => {
-      if (!user) {
-        setWorkoutLoading(false);
-        return;
-      }
-      
-      try {
-        // For simplicity, just grab the first workout
-        const { data, error } = await supabase
-          .from('workouts')
-          .select('*')
-          .limit(1)
-          .single();
-          
-        if (error && error.code !== 'PGRST116') {
-          console.error("Error fetching recommended workout:", error);
-        } else {
-          setRecommendedWorkout(data);
-        }
-      } catch (err) {
-        console.error("Error fetching recommended workout:", err);
-      } finally {
-        setWorkoutLoading(false);
-      }
-    };
+    fetchDashboardData();
     
-    fetchRecommendedWorkout();
-  }, [user]);
+    // Set up interval to refresh data every 30 seconds
+    const intervalId = setInterval(() => {
+      setLastRefresh(Date.now());
+    }, 30000);
+    
+    return () => clearInterval(intervalId);
+  }, [user, location.pathname, lastRefresh]);
   
   // Default/placeholder workout if none is found
   const defaultWorkout = {
@@ -138,11 +138,25 @@ const Dashboard = () => {
   // Show a "new account" view if user has no stats yet
   const isNewAccount = !loading && !statsLoading && user && !userStats;
 
+  // Manual refresh button handler
+  const handleManualRefresh = () => {
+    setLastRefresh(Date.now());
+  };
+
   return (
     <>
       <Navbar />
       <div className="container mx-auto px-6 pt-28 pb-12">
-        <DashboardHeader userName={userName} />
+        <div className="flex justify-between items-center mb-4">
+          <DashboardHeader userName={userName} />
+          <Button 
+            variant="outline" 
+            className="border-fitmentor-cream/30 text-fitmentor-cream hover:bg-fitmentor-cream/10"
+            onClick={handleManualRefresh}
+          >
+            Refresh Data
+          </Button>
+        </div>
         
         {isNewAccount ? (
           <div className="text-center py-16 my-8 glass-card">
@@ -172,7 +186,12 @@ const Dashboard = () => {
               streak={userStats?.workout_streak || 0} 
               totalWorkoutTime={userStats?.total_workout_time || 0} 
               caloriesBurned={userStats?.total_calories_burned || 0} 
-              loading={statsLoading}
+              goalProgress={userGoals?.progress_percent || 0}
+              goalType={userGoals?.goal_type === "weight_loss" ? "Weight Loss" : 
+                        userGoals?.goal_type === "muscle_gain" ? "Muscle Growth" :
+                        userGoals?.goal_type === "endurance" ? "Endurance" :
+                        "General Fitness"}
+              loading={statsLoading || goalsLoading}
             />
             
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -260,12 +279,14 @@ const Dashboard = () => {
                       <div className="bg-fitmentor-dark-gray/40 rounded-lg p-4 mb-6">
                         <div className="flex justify-between items-center mb-2">
                           <span className="text-sm text-fitmentor-medium-gray">Progress</span>
-                          <span className="text-sm font-medium text-fitmentor-cream">35%</span>
+                          <span className="text-sm font-medium text-fitmentor-cream">
+                            {Math.round(userGoals.progress_percent || 0)}%
+                          </span>
                         </div>
                         <div className="h-2 bg-fitmentor-dark-gray/50 rounded-full overflow-hidden">
                           <div 
                             className="h-full bg-gradient-to-r from-fitmentor-cream to-fitmentor-cream/70 rounded-full"
-                            style={{ width: "35%" }}
+                            style={{ width: `${Math.round(userGoals.progress_percent || 0)}%` }}
                           ></div>
                         </div>
                       </div>

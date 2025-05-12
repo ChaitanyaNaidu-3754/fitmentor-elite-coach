@@ -1,11 +1,12 @@
-
-import { BarChart3, Flame, Clock, Calendar } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
+import { BarChart3, Calendar, Clock, Flame } from "lucide-react";
 
 interface StatsOverviewProps {
   streak: number;
   totalWorkoutTime: number;
   caloriesBurned: number;
+  goalProgress?: number;
+  goalType?: string;
   loading?: boolean;
 }
 
@@ -13,10 +14,13 @@ const StatsOverview = ({
   streak = 0, 
   totalWorkoutTime = 0, 
   caloriesBurned = 0,
+  goalProgress = 0,
+  goalType = "Muscle Growth",
   loading = false
 }: StatsOverviewProps) => {
-  // Format workout time (minutes) to hours and minutes
-  const formatWorkoutTime = (minutes: number) => {
+  // Format workout time (seconds) to hours and minutes
+  const formatWorkoutTime = (seconds: number) => {
+    const minutes = Math.floor(seconds / 60);
     const hours = Math.floor(minutes / 60);
     const mins = minutes % 60;
     
@@ -75,7 +79,7 @@ const StatsOverview = ({
             </div>
           </div>
           <div className="mt-4">
-            <p className="text-xs text-fitmentor-medium-gray">Last 30 days</p>
+            <p className="text-xs text-fitmentor-medium-gray">Total time exercising</p>
           </div>
         </CardContent>
       </Card>
@@ -92,7 +96,7 @@ const StatsOverview = ({
             </div>
           </div>
           <div className="mt-4">
-            <p className="text-xs text-fitmentor-medium-gray">Last 7 days</p>
+            <p className="text-xs text-fitmentor-medium-gray">Total calories burned</p>
           </div>
         </CardContent>
       </Card>
@@ -102,7 +106,7 @@ const StatsOverview = ({
           <div className="flex items-start justify-between">
             <div>
               <p className="text-fitmentor-medium-gray text-sm font-medium mb-1">Current Goal</p>
-              <h4 className="text-xl font-bold text-fitmentor-white">Muscle Growth</h4>
+              <h4 className="text-xl font-bold text-fitmentor-white">{goalType}</h4>
             </div>
             <div className="p-3 rounded-full bg-fitmentor-dark-gray/50 text-fitmentor-cream">
               <BarChart3 size={24} />
@@ -112,10 +116,10 @@ const StatsOverview = ({
             <div className="flex-1 h-2 bg-fitmentor-dark-gray/50 rounded-full overflow-hidden">
               <div 
                 className="h-full bg-gradient-to-r from-fitmentor-cream to-fitmentor-cream/70 rounded-full"
-                style={{ width: "35%" }}
+                style={{ width: `${Math.round(goalProgress)}%` }}
               ></div>
             </div>
-            <span className="ml-2 text-sm text-fitmentor-cream">35%</span>
+            <span className="ml-2 text-sm text-fitmentor-cream">{Math.round(goalProgress)}%</span>
           </div>
         </CardContent>
       </Card>

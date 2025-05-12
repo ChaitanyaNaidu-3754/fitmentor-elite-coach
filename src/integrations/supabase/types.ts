@@ -55,7 +55,7 @@ export type Database = {
           current_muscle_mass: number | null
           current_weight: number | null
           experience_level: string | null
-          goal_type: string
+          goal_type: string | null
           id: string
           start_date: string | null
           target_body_fat: number | null
@@ -66,6 +66,7 @@ export type Database = {
           user_id: string
           workout_days_per_week: number | null
           workout_minutes_per_session: number | null
+          progress_percent: number | null
         }
         Insert: {
           created_at?: string | null
@@ -73,7 +74,7 @@ export type Database = {
           current_muscle_mass?: number | null
           current_weight?: number | null
           experience_level?: string | null
-          goal_type: string
+          goal_type?: string | null
           id?: string
           start_date?: string | null
           target_body_fat?: number | null
@@ -84,6 +85,7 @@ export type Database = {
           user_id: string
           workout_days_per_week?: number | null
           workout_minutes_per_session?: number | null
+          progress_percent?: number | null
         }
         Update: {
           created_at?: string | null
@@ -91,7 +93,7 @@ export type Database = {
           current_muscle_mass?: number | null
           current_weight?: number | null
           experience_level?: string | null
-          goal_type?: string
+          goal_type?: string | null
           id?: string
           start_date?: string | null
           target_body_fat?: number | null
@@ -102,12 +104,13 @@ export type Database = {
           user_id?: string
           workout_days_per_week?: number | null
           workout_minutes_per_session?: number | null
+          progress_percent?: number | null
         }
         Relationships: [
           {
             foreignKeyName: "goals_user_id_fkey"
             columns: ["user_id"]
-            isOneToOne: false
+            isOneToOne: true
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
@@ -396,6 +399,54 @@ export type Database = {
           updated_at?: string | null
         }
         Relationships: []
+      }
+      workout_history: {
+        Row: {
+          id: string
+          user_id: string
+          workout_id: string
+          date: string
+          duration_seconds: number | null
+          calories_burned: number | null
+          reps: number | null
+          created_at: string | null
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          workout_id: string
+          date: string
+          duration_seconds?: number | null
+          calories_burned?: number | null
+          reps?: number | null
+          created_at?: string | null
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          workout_id?: string
+          date?: string
+          duration_seconds?: number | null
+          calories_burned?: number | null
+          reps?: number | null
+          created_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "workout_history_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "workout_history_workout_id_fkey"
+            columns: ["workout_id"]
+            isOneToOne: false
+            referencedRelation: "workouts"
+            referencedColumns: ["id"]
+          }
+        ]
       }
     }
     Views: {
