@@ -1,17 +1,16 @@
-
-import { useState } from "react";
 import { Button } from "@/components/ui/button";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { useToast } from "@/hooks/use-toast";
-import { useNavigate } from "react-router-dom";
-import { supabase } from "@/integrations/supabase/client";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import * as z from "zod";
 import { useAuth } from "@/hooks/use-auth";
+import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useState } from "react";
+import { useForm } from "react-hook-form";
+import { useNavigate } from "react-router-dom";
+import * as z from "zod";
 
 // Step 1: Basic Information
 const basicsSchema = z.object({
@@ -118,21 +117,42 @@ const ProfileSetup = () => {
 
       if (profileError) throw profileError;
       
-      // 2. Insert or update user goals
-      const { error: goalsError } = await supabase
+      // 2. Check if user already has goals
+      const { data: existingGoal, error: checkError } = await supabase
         .from('goals')
-        .upsert({
-          user_id: user.id,
-          goal_type: goalsData.primary_goal,
-          current_weight: basicsData.weight,
-          target_weight: goalsData.target_weight,
-          target_body_fat: goalsData.target_body_fat,
-          // Store experience level as part of the goal metadata
-          experience_level: goalsData.experience_level,
-          // Store schedule data with the goal
-          workout_days_per_week: parseInt(data.workout_days_per_week),
-          workout_minutes_per_session: parseInt(data.workout_time_per_session),
-        }, { onConflict: 'user_id' });
+        .select('id')
+        .eq('user_id', user.id)
+        .single();
+
+      if (checkError && checkError.code !== 'PGRST116') throw checkError;
+
+      // 3. Insert or update user goals
+      const goalData = {
+        user_id: user.id,
+        goal_type: goalsData.primary_goal,
+        current_weight: basicsData.weight,
+        target_weight: goalsData.target_weight,
+        target_body_fat: goalsData.target_body_fat,
+        experience_level: goalsData.experience_level,
+        workout_days_per_week: parseInt(data.workout_days_per_week),
+        workout_minutes_per_session: parseInt(data.workout_time_per_session),
+      };
+
+      let goalsError;
+      if (existingGoal) {
+        // Update existing goal
+        const { error } = await supabase
+          .from('goals')
+          .update(goalData)
+          .eq('id', existingGoal.id);
+        goalsError = error;
+      } else {
+        // Insert new goal
+        const { error } = await supabase
+          .from('goals')
+          .insert([goalData]);
+        goalsError = error;
+      }
 
       if (goalsError) throw goalsError;
       
