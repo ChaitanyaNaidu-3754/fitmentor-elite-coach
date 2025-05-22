@@ -1,7 +1,25 @@
 import { Pose } from "@/types/pose";
-import * as mpDrawing from '@mediapipe/drawing_utils';
-import * as mpPose from '@mediapipe/pose';
 import { useEffect, useRef, useState } from "react";
+
+// Import MediaPipe dynamically
+let mpPose: any = null;
+let mpDrawing: any = null;
+
+// Load MediaPipe libraries
+const loadMediaPipe = async () => {
+  try {
+    const [poseModule, drawingModule] = await Promise.all([
+      import('@mediapipe/pose'),
+      import('@mediapipe/drawing_utils')
+    ]);
+    mpPose = poseModule;
+    mpDrawing = drawingModule;
+    return true;
+  } catch (error) {
+    console.error('Error loading MediaPipe modules:', error);
+    return false;
+  }
+};
 
 interface MotionDetectorProps {
   videoRef: React.RefObject<HTMLVideoElement>;
@@ -246,13 +264,19 @@ export default function MotionDetector({
   // Initialize MediaPipe Pose
   useEffect(() => {
     let isMounted = true;
-    let pose: mpPose.Pose | null = null;
+    let pose: any = null;
 
     async function initPose() {
       try {
+        console.log('Loading MediaPipe modules...');
+        const loaded = await loadMediaPipe();
+        if (!loaded) {
+          throw new Error('Failed to load MediaPipe modules');
+        }
+
         console.log('Starting MediaPipe Pose initialization...');
         pose = new mpPose.Pose({
-          locateFile: (file) => {
+          locateFile: (file: string) => {
             const url = `https://cdn.jsdelivr.net/npm/@mediapipe/pose@0.5.1635988162/${file}`;
             console.log('Loading MediaPipe file:', url);
             return url;
@@ -261,14 +285,14 @@ export default function MotionDetector({
 
         console.log('Setting MediaPipe Pose options...');
         pose.setOptions({
-          modelComplexity: 2,
+          modelComplexity: 1, // Changed from 2 to 1 for better performance
           smoothLandmarks: true,
           enableSegmentation: false,
           minDetectionConfidence: 0.5,
           minTrackingConfidence: 0.5
         });
 
-        pose.onResults((results) => {
+        pose.onResults((results: any) => {
           console.log('MediaPipe Pose results received:', results.poseLandmarks ? 'Landmarks detected' : 'No landmarks');
           const canvas = canvasRef.current;
           if (!canvas) {
