@@ -19,16 +19,4 @@ export default defineConfig(({ mode }) => ({
       "@": path.resolve(__dirname, "./src"),
     },
   },
-  build: {
-    rollupOptions: {
-      output: {
-        manualChunks: {
-          'mediapipe': ['@mediapipe/pose', '@mediapipe/drawing_utils', '@mediapipe/camera_utils'],
-        },
-      },
-    },
-  },
-  optimizeDeps: {
-    include: ['@mediapipe/pose', '@mediapipe/drawing_utils', '@mediapipe/camera_utils'],
-  },
 }));

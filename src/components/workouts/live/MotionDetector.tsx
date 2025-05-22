@@ -8,12 +8,32 @@ let mpDrawing: any = null;
 // Load MediaPipe libraries
 const loadMediaPipe = async () => {
   try {
-    const [poseModule, drawingModule] = await Promise.all([
-      import('@mediapipe/pose'),
-      import('@mediapipe/drawing_utils')
+    // Load MediaPipe scripts directly
+    const loadScript = (src: string) => {
+      return new Promise((resolve, reject) => {
+        const script = document.createElement('script');
+        script.src = src;
+        script.onload = resolve;
+        script.onerror = reject;
+        document.head.appendChild(script);
+      });
+    };
+
+    // Load required scripts
+    await Promise.all([
+      loadScript('https://cdn.jsdelivr.net/npm/@mediapipe/pose@0.5.1635988162/pose.js'),
+      loadScript('https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils@0.3.1620248074/drawing_utils.js'),
+      loadScript('https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils@0.3.1620248074/camera_utils.js')
     ]);
-    mpPose = poseModule;
-    mpDrawing = drawingModule;
+
+    // Get the global MediaPipe objects
+    mpPose = (window as any).Pose;
+    mpDrawing = (window as any).drawingUtils;
+
+    if (!mpPose || !mpDrawing) {
+      throw new Error('MediaPipe modules not loaded properly');
+    }
+
     return true;
   } catch (error) {
     console.error('Error loading MediaPipe modules:', error);
@@ -275,7 +295,7 @@ export default function MotionDetector({
         }
 
         console.log('Starting MediaPipe Pose initialization...');
-        pose = new mpPose.Pose({
+        pose = new mpPose({
           locateFile: (file: string) => {
             const url = `https://cdn.jsdelivr.net/npm/@mediapipe/pose@0.5.1635988162/${file}`;
             console.log('Loading MediaPipe file:', url);
@@ -285,7 +305,7 @@ export default function MotionDetector({
 
         console.log('Setting MediaPipe Pose options...');
         pose.setOptions({
-          modelComplexity: 1, // Changed from 2 to 1 for better performance
+          modelComplexity: 1,
           smoothLandmarks: true,
           enableSegmentation: false,
           minDetectionConfidence: 0.5,
