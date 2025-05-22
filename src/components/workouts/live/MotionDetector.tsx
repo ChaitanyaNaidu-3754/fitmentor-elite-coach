@@ -1,79 +1,7 @@
 import { Pose } from "@/types/pose";
+import * as mpDrawing from '@mediapipe/drawing_utils';
+import * as mpPose from '@mediapipe/pose';
 import { useEffect, useRef, useState } from "react";
-
-// Import MediaPipe dynamically
-let mpPose: any = null;
-let mpDrawing: any = null;
-
-// Load MediaPipe libraries
-const loadMediaPipe = async () => {
-  try {
-    // Load MediaPipe scripts directly
-    const loadScript = (src: string) => {
-      return new Promise((resolve, reject) => {
-        if (document.querySelector(`script[src="${src}"]`)) {
-          resolve(true);
-          return;
-        }
-        const script = document.createElement('script');
-        script.src = src;
-        script.async = true;
-        script.onload = () => {
-          console.log(`Loaded script: ${src}`);
-          resolve(true);
-        };
-        script.onerror = (error) => {
-          console.error(`Failed to load script: ${src}`, error);
-          reject(error);
-        };
-        document.head.appendChild(script);
-      });
-    };
-
-    // Load required scripts
-    console.log('Loading MediaPipe scripts...');
-    const CDN_URLS = [
-      'https://cdn.jsdelivr.net/npm/@mediapipe/pose@0.5.1635988162/pose.js',
-      'https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils@0.3.1620248074/drawing_utils.js',
-      'https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils@0.3.1620248074/camera_utils.js'
-    ];
-
-    const FALLBACK_URLS = [
-      'https://unpkg.com/@mediapipe/pose@0.5.1635988162/pose.js',
-      'https://unpkg.com/@mediapipe/drawing_utils@0.3.1620248074/drawing_utils.js',
-      'https://unpkg.com/@mediapipe/camera_utils@0.3.1620248074/camera_utils.js'
-    ];
-
-    try {
-      await Promise.all(CDN_URLS.map(url => loadScript(url)));
-    } catch (error) {
-      console.log('Primary CDN failed, trying fallback...');
-      await Promise.all(FALLBACK_URLS.map(url => loadScript(url)));
-    }
-
-    // Wait for MediaPipe to be available
-    let attempts = 0;
-    const maxAttempts = 10;
-    while (!(window as any).Pose && attempts < maxAttempts) {
-      await new Promise(resolve => setTimeout(resolve, 500));
-      attempts++;
-    }
-
-    // Get the global MediaPipe objects
-    mpPose = (window as any).Pose;
-    mpDrawing = (window as any).drawingUtils;
-
-    if (!mpPose || !mpDrawing) {
-      throw new Error('MediaPipe modules not loaded properly after timeout');
-    }
-
-    console.log('MediaPipe modules loaded successfully');
-    return true;
-  } catch (error) {
-    console.error('Error loading MediaPipe modules:', error);
-    return false;
-  }
-};
 
 interface MotionDetectorProps {
   videoRef: React.RefObject<HTMLVideoElement>;
@@ -318,46 +246,27 @@ export default function MotionDetector({
   // Initialize MediaPipe Pose
   useEffect(() => {
     let isMounted = true;
-    let pose: any = null;
+    let pose: mpPose.Pose | null = null;
 
     async function initPose() {
       try {
-        console.log('Loading MediaPipe modules...');
-        const loaded = await loadMediaPipe();
-        if (!loaded) {
-          throw new Error('Failed to load MediaPipe modules');
-        }
-
-        console.log('Starting MediaPipe Pose initialization...');
-        pose = new mpPose({
-          locateFile: (file: string) => {
-            const url = `https://cdn.jsdelivr.net/npm/@mediapipe/pose@0.5.1635988162/${file}`;
-            console.log('Loading MediaPipe file:', url);
-            return url;
-          }
+        pose = new mpPose.Pose({
+          locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/pose@0.5.1635988162/${file}`
         });
 
-        console.log('Setting MediaPipe Pose options...');
         pose.setOptions({
-          modelComplexity: 1,
+          modelComplexity: 2,
           smoothLandmarks: true,
           enableSegmentation: false,
           minDetectionConfidence: 0.5,
           minTrackingConfidence: 0.5
         });
 
-        pose.onResults((results: any) => {
-          console.log('MediaPipe Pose results received:', results.poseLandmarks ? 'Landmarks detected' : 'No landmarks');
+        pose.onResults((results) => {
           const canvas = canvasRef.current;
-          if (!canvas) {
-            console.log('Canvas reference not found');
-            return;
-          }
+          if (!canvas) return;
           const ctx = canvas.getContext('2d', { willReadFrequently: true });
-          if (!ctx) {
-            console.log('Could not get canvas context');
-            return;
-          }
+          if (!ctx) return;
 
           // Draw video frame
           if (videoRef.current && videoRef.current.videoWidth && videoRef.current.videoHeight) {
