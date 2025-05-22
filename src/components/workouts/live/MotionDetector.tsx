@@ -11,29 +11,63 @@ const loadMediaPipe = async () => {
     // Load MediaPipe scripts directly
     const loadScript = (src: string) => {
       return new Promise((resolve, reject) => {
+        if (document.querySelector(`script[src="${src}"]`)) {
+          resolve(true);
+          return;
+        }
         const script = document.createElement('script');
         script.src = src;
-        script.onload = resolve;
-        script.onerror = reject;
+        script.async = true;
+        script.onload = () => {
+          console.log(`Loaded script: ${src}`);
+          resolve(true);
+        };
+        script.onerror = (error) => {
+          console.error(`Failed to load script: ${src}`, error);
+          reject(error);
+        };
         document.head.appendChild(script);
       });
     };
 
     // Load required scripts
-    await Promise.all([
-      loadScript('https://cdn.jsdelivr.net/npm/@mediapipe/pose@0.5.1635988162/pose.js'),
-      loadScript('https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils@0.3.1620248074/drawing_utils.js'),
-      loadScript('https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils@0.3.1620248074/camera_utils.js')
-    ]);
+    console.log('Loading MediaPipe scripts...');
+    const CDN_URLS = [
+      'https://cdn.jsdelivr.net/npm/@mediapipe/pose@0.5.1635988162/pose.js',
+      'https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils@0.3.1620248074/drawing_utils.js',
+      'https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils@0.3.1620248074/camera_utils.js'
+    ];
+
+    const FALLBACK_URLS = [
+      'https://unpkg.com/@mediapipe/pose@0.5.1635988162/pose.js',
+      'https://unpkg.com/@mediapipe/drawing_utils@0.3.1620248074/drawing_utils.js',
+      'https://unpkg.com/@mediapipe/camera_utils@0.3.1620248074/camera_utils.js'
+    ];
+
+    try {
+      await Promise.all(CDN_URLS.map(url => loadScript(url)));
+    } catch (error) {
+      console.log('Primary CDN failed, trying fallback...');
+      await Promise.all(FALLBACK_URLS.map(url => loadScript(url)));
+    }
+
+    // Wait for MediaPipe to be available
+    let attempts = 0;
+    const maxAttempts = 10;
+    while (!(window as any).Pose && attempts < maxAttempts) {
+      await new Promise(resolve => setTimeout(resolve, 500));
+      attempts++;
+    }
 
     // Get the global MediaPipe objects
     mpPose = (window as any).Pose;
     mpDrawing = (window as any).drawingUtils;
 
     if (!mpPose || !mpDrawing) {
-      throw new Error('MediaPipe modules not loaded properly');
+      throw new Error('MediaPipe modules not loaded properly after timeout');
     }
 
+    console.log('MediaPipe modules loaded successfully');
     return true;
   } catch (error) {
     console.error('Error loading MediaPipe modules:', error);
