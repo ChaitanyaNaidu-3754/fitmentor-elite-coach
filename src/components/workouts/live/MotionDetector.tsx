@@ -250,10 +250,16 @@ export default function MotionDetector({
 
     async function initPose() {
       try {
+        console.log('Starting MediaPipe Pose initialization...');
         pose = new mpPose.Pose({
-          locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/pose@0.5.1635988162/${file}`
+          locateFile: (file) => {
+            const url = `https://cdn.jsdelivr.net/npm/@mediapipe/pose@0.5.1635988162/${file}`;
+            console.log('Loading MediaPipe file:', url);
+            return url;
+          }
         });
 
+        console.log('Setting MediaPipe Pose options...');
         pose.setOptions({
           modelComplexity: 2,
           smoothLandmarks: true,
@@ -263,10 +269,17 @@ export default function MotionDetector({
         });
 
         pose.onResults((results) => {
+          console.log('MediaPipe Pose results received:', results.poseLandmarks ? 'Landmarks detected' : 'No landmarks');
           const canvas = canvasRef.current;
-          if (!canvas) return;
+          if (!canvas) {
+            console.log('Canvas reference not found');
+            return;
+          }
           const ctx = canvas.getContext('2d', { willReadFrequently: true });
-          if (!ctx) return;
+          if (!ctx) {
+            console.log('Could not get canvas context');
+            return;
+          }
 
           // Draw video frame
           if (videoRef.current && videoRef.current.videoWidth && videoRef.current.videoHeight) {

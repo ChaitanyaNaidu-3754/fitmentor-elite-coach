@@ -39,6 +39,16 @@ const CameraView = ({
         muted
         className={`h-full w-full object-cover ${cameraActive ? 'block' : 'hidden'}`}
         style={{ transform: 'scaleX(-1)', minHeight: '400px' }}
+        onLoadedMetadata={() => {
+          console.log('Video metadata loaded:', {
+            videoWidth: videoRef.current?.videoWidth,
+            videoHeight: videoRef.current?.videoHeight,
+            readyState: videoRef.current?.readyState
+          });
+        }}
+        onError={(e) => {
+          console.error('Video element error:', e);
+        }}
       />
 
       {/* Motion detection component */}
